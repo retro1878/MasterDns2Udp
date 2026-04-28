@@ -67,7 +67,7 @@ DNS_REQUEST_WORKERS = 8
 # ── Compression ──────────────────────────────────────────────────────────────
 
 # Compression types the server accepts from / sends to clients.
-# 0=off  1=LZ4  2=Snappy  3=ZLIB
+# 0=off  1=ZSTD  2=LZ4  3=ZLIB
 SUPPORTED_UPLOAD_COMPRESSION_TYPES   = [0, 1, 2, 3]
 SUPPORTED_DOWNLOAD_COMPRESSION_TYPES = [0, 1, 2, 3]
 
