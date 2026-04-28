@@ -39,6 +39,8 @@ type ClientConfig struct {
 	ServerIP                              string            `toml:"SERVER_IP"`
 	UDPUploadPort                         int               `toml:"UDP_UPLOAD_PORT"`
 	UploadSocks5Proxies                   []string          `toml:"UPLOAD_SOCKS5_PROXIES"`
+	VioTCPDownloadPort                    int               `toml:"VIO_TCP_DOWNLOAD_PORT"`
+	VioTCPServerPort                      int               `toml:"VIO_TCP_SERVER_PORT"`
 	SOCKS5Auth                            bool              `toml:"SOCKS5_AUTH"`
 	SOCKS5User                            string            `toml:"SOCKS5_USER"`
 	SOCKS5Pass                            string            `toml:"SOCKS5_PASS"`
@@ -376,6 +378,19 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 	}
 	if len(cfg.UploadSocks5Proxies) > 0 && (cfg.ServerIP == "" || cfg.UDPUploadPort == 0) {
 		return cfg, fmt.Errorf("UPLOAD_SOCKS5_PROXIES requires SERVER_IP and UDP_UPLOAD_PORT to be set")
+	}
+
+	if cfg.VioTCPDownloadPort < 0 || cfg.VioTCPDownloadPort > 65535 {
+		return cfg, fmt.Errorf("invalid VIO_TCP_DOWNLOAD_PORT: %d", cfg.VioTCPDownloadPort)
+	}
+	if cfg.VioTCPServerPort < 0 || cfg.VioTCPServerPort > 65535 {
+		return cfg, fmt.Errorf("invalid VIO_TCP_SERVER_PORT: %d", cfg.VioTCPServerPort)
+	}
+	if cfg.VioTCPDownloadPort > 0 && (cfg.VioTCPServerPort == 0 || cfg.ServerIP == "") {
+		return cfg, fmt.Errorf("VIO_TCP_DOWNLOAD_PORT requires SERVER_IP and VIO_TCP_SERVER_PORT to be set")
+	}
+	if cfg.VioTCPDownloadPort > 0 && (cfg.UDPDownloadIP == "" || cfg.UDPDownloadPort == 0) {
+		return cfg, fmt.Errorf("VIO_TCP_DOWNLOAD_PORT requires UDP_DOWNLOAD_IP and UDP_DOWNLOAD_PORT to be set")
 	}
 
 	if len(cfg.SOCKS5User) > 255 {

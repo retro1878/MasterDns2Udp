@@ -357,9 +357,14 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 	}
 	copy(verifyCode[:], randomPart)
 
-	size := VpnProto.SessionInitBaseSize
 	hasUDP := c.cfg.UDPDownloadIP != "" && c.cfg.UDPDownloadPort > 0
-	if hasUDP {
+	hasVioTCP := hasUDP && c.cfg.VioTCPDownloadPort > 0
+
+	size := VpnProto.SessionInitBaseSize
+	switch {
+	case hasVioTCP:
+		size = VpnProto.SessionInitVioTCPSize
+	case hasUDP:
 		size = VpnProto.SessionInitUDPSize
 	}
 
@@ -379,6 +384,10 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 		}
 		copy(payload[10:14], ip)
 		binary.BigEndian.PutUint16(payload[14:16], uint16(c.cfg.UDPDownloadPort))
+	}
+
+	if hasVioTCP {
+		binary.BigEndian.PutUint16(payload[16:18], uint16(c.cfg.VioTCPDownloadPort))
 	}
 
 	return payload, payload[0] == mtuProbeBase64Reply, verifyCode, nil

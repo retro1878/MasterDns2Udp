@@ -23,6 +23,18 @@ UDP_DOWNLOAD_PORT = 5555
 # Also open this port in your firewall if you enable it (e.g. ufw allow 5556/udp).
 UDP_UPLOAD_PORT = 0
 
+# ── Violated TCP Download Channel ────────────────────────────────────────────
+
+# TCP source port used when sending violated TCP download packets to clients.
+# Requires root / CAP_NET_RAW. Set to 0 to disable.
+# This must match VIO_TCP_SERVER_PORT on the client.
+# Example: VIO_TCP_DOWNLOAD_PORT = 45000
+VIO_TCP_DOWNLOAD_PORT = 0
+
+# Public IPv4 of this server (used as the IP source in violated TCP headers).
+# Leave empty to auto-detect from network interfaces.
+VIO_TCP_SOURCE_IP = ""
+
 # ── DNS Domain ───────────────────────────────────────────────────────────────
 
 # The domain(s) the server will intercept as tunnel traffic.

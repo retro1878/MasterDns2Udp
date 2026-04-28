@@ -21,6 +21,7 @@ import (
 	DnsParser "masterdns2udp/internal/dnsparser"
 	Enums "masterdns2udp/internal/enums"
 	fragmentStore "masterdns2udp/internal/fragmentstore"
+	"masterdns2udp/internal/viotcp"
 	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
@@ -73,6 +74,7 @@ func (c *Client) StopAsyncRuntime() {
 		// Final drain to return all buffers to the pool and prevent memory leaks.
 		c.drainQueues()
 		c.socks5Upload = nil
+		c.vioTCPReceiver = nil
 		c.log.Debugf("\U0001F232 <green>Async Runtime stopped cleanly.</green>")
 	}
 
@@ -376,6 +378,30 @@ func (c *Client) StartAsyncRuntime(parentCtx context.Context) error {
 		c.socks5Upload.Start(runtimeCtx)
 		c.log.Infof("\U0001F4E4 <cyan>SOCKS5 upload pool started: <green>%d</green> proxies → <green>%s:%d</green></cyan>",
 			len(c.cfg.UploadSocks5Proxies), c.cfg.ServerIP, c.cfg.UDPUploadPort)
+	}
+
+	// Start violated TCP download receiver if configured.
+	c.vioTCPReceiver = nil
+	if c.cfg.VioTCPDownloadPort > 0 && c.cfg.VioTCPServerPort > 0 && c.cfg.ServerIP != "" {
+		svrIP := net.ParseIP(c.cfg.ServerIP)
+		if svrIP == nil {
+			c.log.Warnf("<yellow>VioTCP: invalid SERVER_IP %q — violated TCP download disabled</yellow>", c.cfg.ServerIP)
+		} else {
+			recv, recvErr := viotcp.NewReceiver(svrIP, uint16(c.cfg.VioTCPServerPort))
+			if recvErr != nil {
+				c.log.Warnf("<yellow>VioTCP: cannot open raw socket: %v — violated TCP download disabled</yellow>", recvErr)
+			} else {
+				c.vioTCPReceiver = recv
+				c.log.Infof("\U0001F4E5 <cyan>VioTCP download receiver ready (filter <green>%s:%d</green>)</cyan>",
+					c.cfg.ServerIP, c.cfg.VioTCPServerPort)
+				go func() {
+					<-runtimeCtx.Done()
+					_ = recv.Close()
+				}()
+				c.asyncWG.Add(1)
+				go c.asyncVioTCPDownloadReaderWorker(runtimeCtx, recv)
+			}
+		}
 	}
 
 	// 6. Spawn Reader Workers (High-speed ingestion)
@@ -953,6 +979,40 @@ func (c *Client) asyncUDPDownloadReaderWorker(ctx context.Context, conn *net.UDP
 				c.udpBufferPool.Put(buf)
 				c.onRXDrop(addr)
 			}
+		}
+	}
+}
+
+// asyncVioTCPDownloadReaderWorker captures violated TCP packets from the abroad
+// server via a raw socket and enqueues their payloads as if they arrived over
+// the UDP download channel. ARQ sequence numbers ensure the client deduplicates
+// copies that arrive via both channels simultaneously.
+func (c *Client) asyncVioTCPDownloadReaderWorker(ctx context.Context, recv *viotcp.Receiver) {
+	defer c.asyncWG.Done()
+	c.log.Debugf("\U0001F4E5 <green>VioTCP Download Reader started</green>")
+
+	buf := make([]byte, 65535)
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		n, err := recv.ReadPayload(buf)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			c.log.Debugf("<yellow>VioTCP receiver error: %v</yellow>", err)
+			continue
+		}
+		if n == 0 {
+			continue
+		}
+		data := make([]byte, n)
+		copy(data, buf[:n])
+		select {
+		case c.rxChannel <- asyncReadPacket{data: data, isRawUDP: true}:
+		default:
+			c.onRXDrop(nil)
 		}
 	}
 }

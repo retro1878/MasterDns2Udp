@@ -331,6 +331,7 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 	mtu := record.DownloadMTUBytes
 	sessionID := record.ID
 	cookie := record.Cookie
+	vioPort := record.ClientVioTCPPort
 
 	// Drain orphan queue first (highest priority — RST/FIN control packets).
 	if record.OrphanQueue != nil {
@@ -346,7 +347,7 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 				StreamID:      pkt.StreamID,
 				SequenceNum:   pkt.SequenceNum,
 				Payload:       pkt.Payload,
-			}, mtu)
+			}, mtu, vioPort)
 		}
 	}
 
@@ -384,14 +385,18 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 				TotalFragments:  txPkt.TotalFragments,
 				CompressionType: txPkt.CompressionType,
 				Payload:         txPkt.Payload,
-			}, mtu)
+			}, mtu, vioPort)
 			putTXPacketToPool(txPkt)
 		}
 	}
 	_ = now
 }
 
-func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts VpnProto.BuildOptions, mtu int) {
+// sendRawVPNPacketUDP builds and sends a VPN packet over the UDP download channel.
+// If vioTCPDstPort > 0 and a violated TCP sender is configured, the same
+// encrypted payload is also sent over the violated TCP parallel channel so the
+// client's ARQ layer can deduplicate on whichever copy arrives first.
+func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts VpnProto.BuildOptions, mtu int, vioTCPDstPort uint16) {
 	raw, err := VpnProto.BuildRawAuto(opts, mtu)
 	if err != nil {
 		return
@@ -401,4 +406,7 @@ func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts V
 		return
 	}
 	_, _ = conn.WriteToUDP(encrypted, dst)
+	if s.vioTCPSender != nil && vioTCPDstPort > 0 {
+		_ = s.vioTCPSender.Send(dst.IP, vioTCPDstPort, encrypted)
+	}
 }

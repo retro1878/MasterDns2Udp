@@ -82,6 +82,9 @@ type sessionRecord struct {
 	// UDP download channel
 	ClientUDPAddr  *net.UDPAddr // where server sends download packets for this client
 	udpSendNotify  func()       // wakes the server UDP sender goroutine
+
+	// Violated TCP download channel (parallel to UDP, for GFW evasion)
+	ClientVioTCPPort uint16 // destination port on the client for violated TCP packets
 }
 
 type recentlyClosedStreamRecord struct {

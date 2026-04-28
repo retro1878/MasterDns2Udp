@@ -39,6 +39,24 @@ UDP_UPLOAD_PORT = 0   # e.g. 5556
 # Example: UPLOAD_SOCKS5_PROXIES = ["127.0.0.1:13000", "127.0.0.1:14000"]
 UPLOAD_SOCKS5_PROXIES = []
 
+# ── Violated TCP Download Channel ────────────────────────────────────────────
+
+# Parallel download path: server sends encrypted VPN packets as violated TCP
+# (PSH+ACK without prior handshake) alongside the normal UDP download channel.
+# ARQ deduplicates copies that arrive via both channels simultaneously.
+# Requires root / CAP_NET_RAW on the client. Set to 0 to disable.
+
+# Port the server targets when sending violated TCP to this client.
+# Must NOT be occupied by any listening service (kernel will RST, server ignores it).
+# Must match VIO_TCP_DOWNLOAD_PORT on the server.
+VIO_TCP_DOWNLOAD_PORT = 0   # e.g. 45001
+
+# Source port the server uses in violated TCP headers — used for packet filtering.
+# Must match VIO_TCP_DOWNLOAD_PORT in server.toml.
+VIO_TCP_SERVER_PORT = 0     # e.g. 45000
+
+# SERVER_IP (already set above) is also used as the IP filter for the receiver.
+
 # ── DNS Upload Channel ────────────────────────────────────────────────────────
 
 # The tunnel domain — must match DOMAIN on the server.

@@ -10,6 +10,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -31,6 +32,8 @@ type ServerConfig struct {
 	UDPPort                           int      `toml:"UDP_PORT"`
 	UDPDownloadPort                   int      `toml:"UDP_DOWNLOAD_PORT"`
 	UDPUploadPort                     int      `toml:"UDP_UPLOAD_PORT"`
+	VioTCPDownloadPort                int      `toml:"VIO_TCP_DOWNLOAD_PORT"`
+	VioTCPSourceIP                    string   `toml:"VIO_TCP_SOURCE_IP"`
 	UDPReaders                        int      `toml:"UDP_READERS"`
 	SocketBufferSize                  int      `toml:"SOCKET_BUFFER_SIZE"`
 	MaxConcurrentRequests             int      `toml:"MAX_CONCURRENT_REQUESTS"`
@@ -300,6 +303,14 @@ func finalizeServerConfig(cfg ServerConfig) (ServerConfig, error) {
 
 	if cfg.UDPUploadPort < 0 || cfg.UDPUploadPort > 65535 {
 		return cfg, fmt.Errorf("invalid UDP_UPLOAD_PORT: %d", cfg.UDPUploadPort)
+	}
+
+	if cfg.VioTCPDownloadPort < 0 || cfg.VioTCPDownloadPort > 65535 {
+		return cfg, fmt.Errorf("invalid VIO_TCP_DOWNLOAD_PORT: %d", cfg.VioTCPDownloadPort)
+	}
+	cfg.VioTCPSourceIP = strings.TrimSpace(cfg.VioTCPSourceIP)
+	if cfg.VioTCPSourceIP != "" && net.ParseIP(cfg.VioTCPSourceIP) == nil {
+		return cfg, fmt.Errorf("invalid VIO_TCP_SOURCE_IP: %q", cfg.VioTCPSourceIP)
 	}
 
 	if cfg.UDPReaders <= 0 {

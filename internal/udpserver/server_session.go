@@ -684,7 +684,7 @@ func buildPreSessionPacketTypes() [256]bool {
 
 func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domainMatcher.Decision, vpnPacket VpnProto.Packet) []byte {
 	payloadLen := len(vpnPacket.Payload)
-	if vpnPacket.SessionID != 0 || (payloadLen != sessionInitDataSize && payloadLen != VpnProto.SessionInitUDPSize) {
+	if vpnPacket.SessionID != 0 || (payloadLen != sessionInitDataSize && payloadLen != VpnProto.SessionInitUDPSize && payloadLen != VpnProto.SessionInitVioTCPSize) {
 		return nil
 	}
 
@@ -718,12 +718,20 @@ func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domain
 	record.streamCleanup = s.cleanupStreamArtifacts
 
 	// If the client supplied a UDP endpoint, wire up the download channel.
-	if payloadLen == VpnProto.SessionInitUDPSize {
+	if payloadLen >= VpnProto.SessionInitUDPSize {
 		ip := net.IP(vpnPacket.Payload[10:14])
 		port := int(binary.BigEndian.Uint16(vpnPacket.Payload[14:16]))
 		if ip4 := ip.To4(); ip4 != nil && port > 0 {
 			record.ClientUDPAddr = &net.UDPAddr{IP: ip4, Port: port}
 			record.udpSendNotify = s.signalUDPSend
+		}
+	}
+
+	// If the client also supplied a violated TCP port, record it.
+	if payloadLen >= VpnProto.SessionInitVioTCPSize {
+		vioPort := binary.BigEndian.Uint16(vpnPacket.Payload[16:18])
+		if vioPort > 0 {
+			record.ClientVioTCPPort = vioPort
 		}
 	}
 
