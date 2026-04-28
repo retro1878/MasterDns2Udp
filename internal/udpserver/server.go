@@ -88,6 +88,9 @@ type Server struct {
 	// UDP download channel (server→client, asymmetric)
 	udpDownloadConn *net.UDPConn
 	udpSendSignal   chan struct{}
+
+	// UDP upload channel (client→server, raw bypass for SOCKS5 paths)
+	udpUploadConn *net.UDPConn
 }
 
 type request struct {
@@ -345,6 +348,25 @@ func (s *Server) Run(ctx context.Context) error {
 		s.cfg.UDPDownloadPort,
 	)
 
+	// Open the raw UDP upload socket if configured (receives direct client→server uploads via SOCKS5 paths).
+	var ulConn *net.UDPConn
+	if s.cfg.UDPUploadPort > 0 {
+		ulAddr := &net.UDPAddr{IP: net.ParseIP(s.cfg.UDPHost), Port: s.cfg.UDPUploadPort}
+		ulConn, err = net.ListenUDP("udp", ulAddr)
+		if err != nil {
+			return fmt.Errorf("failed to open UDP upload socket on port %d: %w", s.cfg.UDPUploadPort, err)
+		}
+		s.udpUploadConn = ulConn
+		defer func() {
+			_ = ulConn.Close()
+			s.udpUploadConn = nil
+		}()
+		s.log.Infof(
+			"\U0001F4E4 <green>UDP Upload Channel Ready on port <cyan>%d</cyan></green>",
+			s.cfg.UDPUploadPort,
+		)
+	}
+
 	reqCh := make(chan request, s.cfg.EffectiveMaxConcurrentRequests())
 	var workerWG sync.WaitGroup
 	cleanupDone := make(chan struct{})
@@ -357,6 +379,11 @@ func (s *Server) Run(ctx context.Context) error {
 	// Start the UDP sender goroutine.
 	go s.runUDPSender(runCtx)
 
+	// Start the raw UDP upload reader if the socket is open.
+	if ulConn != nil {
+		go s.runRawUDPUploadReader(runCtx, ulConn)
+	}
+
 	s.deferredDNSSession.Start(runCtx)
 	s.deferredConnectSession.Start(runCtx)
 	s.startDNSWorkers(runCtx, conns[0], reqCh, &workerWG)
@@ -367,6 +394,9 @@ func (s *Server) Run(ctx context.Context) error {
 			_ = conn.Close()
 		}
 		_ = dlConn.Close()
+		if ulConn != nil {
+			_ = ulConn.Close()
+		}
 	}()
 
 	readErrCh := make(chan error, max(1, len(conns)))

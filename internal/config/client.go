@@ -36,6 +36,9 @@ type ClientConfig struct {
 	ListenPort                            int               `toml:"LISTEN_PORT"`
 	UDPDownloadIP                         string            `toml:"UDP_DOWNLOAD_IP"`
 	UDPDownloadPort                       int               `toml:"UDP_DOWNLOAD_PORT"`
+	ServerIP                              string            `toml:"SERVER_IP"`
+	UDPUploadPort                         int               `toml:"UDP_UPLOAD_PORT"`
+	UploadSocks5Proxies                   []string          `toml:"UPLOAD_SOCKS5_PROXIES"`
 	SOCKS5Auth                            bool              `toml:"SOCKS5_AUTH"`
 	SOCKS5User                            string            `toml:"SOCKS5_USER"`
 	SOCKS5Pass                            string            `toml:"SOCKS5_PASS"`
@@ -362,6 +365,17 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 		if cfg.UDPDownloadPort < 1 || cfg.UDPDownloadPort > 65535 {
 			return cfg, fmt.Errorf("UDP_DOWNLOAD_IP is set but UDP_DOWNLOAD_PORT is invalid: %d", cfg.UDPDownloadPort)
 		}
+	}
+
+	cfg.ServerIP = strings.TrimSpace(cfg.ServerIP)
+	if cfg.ServerIP != "" && net.ParseIP(cfg.ServerIP) == nil {
+		return cfg, fmt.Errorf("invalid SERVER_IP: %q", cfg.ServerIP)
+	}
+	if cfg.UDPUploadPort < 0 || cfg.UDPUploadPort > 65535 {
+		return cfg, fmt.Errorf("invalid UDP_UPLOAD_PORT: %d", cfg.UDPUploadPort)
+	}
+	if len(cfg.UploadSocks5Proxies) > 0 && (cfg.ServerIP == "" || cfg.UDPUploadPort == 0) {
+		return cfg, fmt.Errorf("UPLOAD_SOCKS5_PROXIES requires SERVER_IP and UDP_UPLOAD_PORT to be set")
 	}
 
 	if len(cfg.SOCKS5User) > 255 {

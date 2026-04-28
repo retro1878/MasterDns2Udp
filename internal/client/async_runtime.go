@@ -72,6 +72,7 @@ func (c *Client) StopAsyncRuntime() {
 
 		// Final drain to return all buffers to the pool and prevent memory leaks.
 		c.drainQueues()
+		c.socks5Upload = nil
 		c.log.Debugf("\U0001F232 <green>Async Runtime stopped cleanly.</green>")
 	}
 
@@ -368,6 +369,15 @@ func (c *Client) StartAsyncRuntime(parentCtx context.Context) error {
 		go c.asyncUDPDownloadReaderWorker(runtimeCtx, dlConn)
 	}
 
+	// Start SOCKS5 upload pool if configured.
+	c.socks5Upload = nil
+	if len(c.cfg.UploadSocks5Proxies) > 0 && c.cfg.ServerIP != "" && c.cfg.UDPUploadPort > 0 {
+		c.socks5Upload = newSocks5UploaderPool(c.cfg.UploadSocks5Proxies, c.cfg.ServerIP, c.cfg.UDPUploadPort, c.log)
+		c.socks5Upload.Start(runtimeCtx)
+		c.log.Infof("\U0001F4E4 <cyan>SOCKS5 upload pool started: <green>%d</green> proxies → <green>%s:%d</green></cyan>",
+			len(c.cfg.UploadSocks5Proxies), c.cfg.ServerIP, c.cfg.UDPUploadPort)
+	}
+
 	// 6. Spawn Reader Workers (High-speed ingestion)
 	for i := 0; i < c.tunnelRX_TX_Workers; i++ {
 		c.asyncWG.Add(1)
@@ -599,6 +609,15 @@ func (c *Client) asyncPlanEncodeWorker(ctx context.Context, id int) {
 					task.selected.ReleaseTXPacket(task.item)
 				}
 				continue
+			}
+
+			// Mirror upload via SOCKS5 paths if the pool is active.
+			if c.socks5Upload != nil {
+				if raw, rawErr := VpnProto.BuildRawAuto(task.opts, c.cfg.CompressionMinSize); rawErr == nil {
+					if enc, encErr := c.codec.Encrypt(raw); encErr == nil {
+						c.socks5Upload.SendToAll(enc)
+					}
+				}
 			}
 
 			if !c.waitForWriterCapacity(ctx, task, frames) {

@@ -24,6 +24,21 @@ LISTEN_PORT = 18000
 UDP_DOWNLOAD_IP   = "YOUR_CLIENT_PUBLIC_IP"   # e.g. "203.0.113.42"
 UDP_DOWNLOAD_PORT = 5555
 
+# ── SOCKS5 Upload Channel (optional) ─────────────────────────────────────────
+
+# Public IPv4 of the abroad server (used to construct SOCKS5 UDP packets).
+# Required when UPLOAD_SOCKS5_PROXIES is set.
+SERVER_IP = ""   # e.g. "203.0.113.10"
+
+# UDP port on the server that receives raw upload packets (server UDP_UPLOAD_PORT).
+# Set to 0 to disable SOCKS5 upload entirely.
+UDP_UPLOAD_PORT = 0   # e.g. 5556
+
+# Local SOCKS5 proxies that provide independent paths to the server.
+# Each proxy must support UDP ASSOCIATE. One entry per proxy.
+# Example: UPLOAD_SOCKS5_PROXIES = ["127.0.0.1:13000", "127.0.0.1:14000"]
+UPLOAD_SOCKS5_PROXIES = []
+
 # ── DNS Upload Channel ────────────────────────────────────────────────────────
 
 # The tunnel domain — must match DOMAIN on the server.

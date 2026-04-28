@@ -135,6 +135,10 @@ type Client struct {
 
 	// SOCKS5 brute-force rate limiter
 	socksRateLimit *socksRateLimiter
+
+	// Optional SOCKS5 upload pool: mirrors every outbound packet to all configured
+	// SOCKS5 proxies as a parallel upload path alongside the DNS channel.
+	socks5Upload *socks5UploaderPool
 }
 
 // clientStreamTXPacket represents a queued packet pending transmission or retransmission.

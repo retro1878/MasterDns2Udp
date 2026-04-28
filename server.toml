@@ -18,6 +18,11 @@ UDP_PORT = 53
 # Must be reachable from the client machine (open in firewall).
 UDP_DOWNLOAD_PORT = 5555
 
+# Port for the raw UDP upload channel (receives direct client→server packets sent
+# via SOCKS5 paths). Set to 0 to disable. Must match UDP_UPLOAD_PORT on the client.
+# Also open this port in your firewall if you enable it (e.g. ufw allow 5556/udp).
+UDP_UPLOAD_PORT = 0
+
 # ── DNS Domain ───────────────────────────────────────────────────────────────
 
 # The domain(s) the server will intercept as tunnel traffic.
