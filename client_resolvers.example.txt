@@ -1,0 +1,21 @@
+# =============================================================================
+# MasterDns2Udp — Client Resolver List
+# =============================================================================
+# One resolver per line.  Format:  IP:PORT  [optional-domain]
+#
+# The domain override tells the client which tunnel domain to embed in queries
+# sent to that resolver.  If omitted, the first entry in DOMAINS is used.
+#
+# Add the Iran server's IP:PORT first so tunnel queries go directly there.
+# Add public resolvers as fallbacks (the client will test MTU against all of
+# them and use whichever pass).
+#
+# Example (replace with your real values):
+# =============================================================================
+
+# Iran server — tunnel queries go here directly
+YOUR_IRAN_SERVER_IP:53   tunnel.example.com
+
+# Public fallback resolvers (used if the server entry passes MTU test)
+8.8.8.8:53
+1.1.1.1:53

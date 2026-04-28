@@ -1,0 +1,85 @@
+# =============================================================================
+# MasterDns2Udp — Client Configuration
+# =============================================================================
+# Deploy this file alongside masterdns2udp-client and client_resolvers.txt
+# on the client server (outside Iran).
+# =============================================================================
+
+# ── Protocol ─────────────────────────────────────────────────────────────────
+
+PROTOCOL_TYPE = "SOCKS5"
+
+# ── Local proxy (what apps connect to) ───────────────────────────────────────
+
+# The SOCKS5 proxy that local apps (browser, curl, etc.) point at.
+LISTEN_IP   = "127.0.0.1"
+LISTEN_PORT = 18000
+
+# ── UDP Download Channel ──────────────────────────────────────────────────────
+
+# Your public IPv4 address that the Iran server can reach.
+# This is the address + port where the client listens for download packets.
+# The server will send all download traffic here.
+# Make sure UDP_DOWNLOAD_PORT is not blocked by your firewall.
+UDP_DOWNLOAD_IP   = "YOUR_CLIENT_PUBLIC_IP"   # e.g. "203.0.113.42"
+UDP_DOWNLOAD_PORT = 5555
+
+# ── DNS Upload Channel ────────────────────────────────────────────────────────
+
+# The tunnel domain — must match DOMAIN on the server.
+DOMAINS = ["tunnel.example.com"]
+
+# ── Encryption ───────────────────────────────────────────────────────────────
+
+# Encryption method. Must match DATA_ENCRYPTION_METHOD on the server.
+DATA_ENCRYPTION_METHOD = 1
+
+# Shared encryption key — must be exactly the same value as in the server's
+# encrypt_key.txt. Paste the contents of that file here as a single string.
+ENCRYPTION_KEY = "PASTE_YOUR_BASE64_KEY_HERE"
+
+# ── Resolvers (DNS servers to send tunnel queries through) ────────────────────
+
+# List of DNS resolvers is loaded from client_resolvers.txt (one per line).
+# Format: IP:PORT  or  IP:PORT domain.example.com
+# These are the DNS servers your ISP or environment lets through.
+# Example entries for client_resolvers.txt:
+#   8.8.8.8:53
+#   1.1.1.1:53
+#   YOUR_IRAN_SERVER_IP:53   tunnel.example.com
+
+# ── Compression ──────────────────────────────────────────────────────────────
+
+# 0=off  1=LZ4  2=Snappy  3=ZLIB
+UPLOAD_COMPRESSION_TYPE   = 0
+DOWNLOAD_COMPRESSION_TYPE = 0
+COMPRESSION_MIN_SIZE      = 120
+
+# ── MTU (packet size negotiation) ────────────────────────────────────────────
+
+MIN_UPLOAD_MTU   = 38
+MAX_UPLOAD_MTU   = 150
+MIN_DOWNLOAD_MTU = 100
+MAX_DOWNLOAD_MTU = 500
+
+# ── Packet duplication (reliability over lossy links) ────────────────────────
+
+PACKET_DUPLICATION_COUNT       = 2
+SETUP_PACKET_DUPLICATION_COUNT = 2
+
+# ── Workers & Tuning ─────────────────────────────────────────────────────────
+
+RX_TX_WORKERS    = 4
+ARQ_WINDOW_SIZE  = 600
+ARQ_INITIAL_RTO_SECONDS = 1.0
+ARQ_MAX_RTO_SECONDS     = 5.0
+
+# ── Ping / Keepalive ─────────────────────────────────────────────────────────
+
+PING_AGGRESSIVE_INTERVAL_SECONDS = 0.1
+PING_LAZY_INTERVAL_SECONDS       = 0.75
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+# DEBUG, INFO, WARN, ERROR
+LOG_LEVEL = "INFO"

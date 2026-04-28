@@ -1,0 +1,84 @@
+# =============================================================================
+# MasterDns2Udp — Server Configuration
+# =============================================================================
+# Deploy this file alongside masterdns2udp-server on the Iran server.
+# Copy encrypt_key.txt (same key as the client) to the same directory.
+# =============================================================================
+
+# ── Network ──────────────────────────────────────────────────────────────────
+
+# IP to bind on. 0.0.0.0 = all interfaces.
+UDP_HOST = "0.0.0.0"
+
+# Port for the DNS upload channel (clients send DNS queries here).
+# Use 53 if you want standard DNS port, or any other port you prefer.
+UDP_PORT = 53
+
+# Port for the UDP download channel (server sends data back to clients here).
+# Must be reachable from the client machine (open in firewall).
+UDP_DOWNLOAD_PORT = 5555
+
+# ── DNS Domain ───────────────────────────────────────────────────────────────
+
+# The domain(s) the server will intercept as tunnel traffic.
+# Must match what clients put in their DOMAINS setting.
+# Example: your domain is "tunnel.example.com" — set it here.
+DOMAIN = ["tunnel.example.com"]
+
+# Minimum label length the server requires to treat a query as tunnel traffic.
+MIN_VPN_LABEL_LENGTH = 3
+
+# ── Encryption ───────────────────────────────────────────────────────────────
+
+# Encryption method. 1 = ChaCha20-Poly1305 (recommended).
+DATA_ENCRYPTION_METHOD = 1
+
+# Path to the shared key file (relative to this config file's directory).
+# Generate with: openssl rand -base64 32 > encrypt_key.txt
+# The client must use the exact same key (via ENCRYPTION_KEY in client.toml).
+ENCRYPTION_KEY_FILE = "encrypt_key.txt"
+
+# ── Upstream DNS (for proxying real DNS queries) ──────────────────────────────
+
+# DNS servers the Iran server uses to resolve legitimate DNS queries.
+DNS_UPSTREAM_SERVERS = ["8.8.8.8:53", "1.1.1.1:53"]
+DNS_UPSTREAM_TIMEOUT = 4.0
+
+# ── SOCKS5 / Forwarding ──────────────────────────────────────────────────────
+
+# PROTOCOL_TYPE controls what the server proxies for clients.
+# "SOCKS5" = built-in SOCKS5 proxy (no extra software needed).
+PROTOCOL_TYPE = "SOCKS5"
+
+# Set to true to require a username/password on the SOCKS5 proxy.
+USE_EXTERNAL_SOCKS5 = false
+SOCKS5_AUTH        = false
+SOCKS5_USER        = "admin"
+SOCKS5_PASS        = "changeme"
+
+# ── Performance ───────────────────────────────────────────────────────────────
+
+# Number of parallel UDP reader goroutines (auto-scaled by CPU if left at 0).
+UDP_READERS = 4
+
+# Number of DNS request worker goroutines.
+DNS_REQUEST_WORKERS = 8
+
+# ── Compression ──────────────────────────────────────────────────────────────
+
+# Compression types the server accepts from / sends to clients.
+# 0=off  1=LZ4  2=Snappy  3=ZLIB
+SUPPORTED_UPLOAD_COMPRESSION_TYPES   = [0, 1, 2, 3]
+SUPPORTED_DOWNLOAD_COMPRESSION_TYPES = [0, 1, 2, 3]
+
+# ── Session / ARQ ─────────────────────────────────────────────────────────────
+
+SESSION_TIMEOUT_SECONDS  = 300.0
+ARQ_WINDOW_SIZE          = 800
+ARQ_INITIAL_RTO_SECONDS  = 1.0
+ARQ_MAX_RTO_SECONDS      = 5.0
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+# DEBUG, INFO, WARN, ERROR
+LOG_LEVEL = "INFO"
