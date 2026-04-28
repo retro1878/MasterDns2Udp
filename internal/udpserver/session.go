@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"net"
 	"slices"
 	"strings"
 	"sync"
@@ -77,6 +78,10 @@ type sessionRecord struct {
 	MaxActiveStreamsPerSession      int
 	closedFlag                      uint32
 	streamCleanup                   func(uint8, uint16)
+
+	// UDP download channel
+	ClientUDPAddr  *net.UDPAddr // where server sends download packets for this client
+	udpSendNotify  func()       // wakes the server UDP sender goroutine
 }
 
 type recentlyClosedStreamRecord struct {
@@ -263,7 +268,7 @@ func (s *sessionStore) findOrCreate(
 	maxClientUploadMTU int,
 	maxClientDownloadMTU int,
 ) (*sessionRecord, bool, error) {
-	if len(payload) != sessionInitDataSize || !isValidSessionResponseMode(payload[0]) {
+	if len(payload) < sessionInitDataSize || !isValidSessionResponseMode(payload[0]) {
 		return nil, false, nil
 	}
 
@@ -778,6 +783,7 @@ func (r *sessionRecord) getOrCreateStream(streamID uint16, arqConfig arq.Config,
 
 	s := NewStreamServer(streamID, r.ID, arqConfig, localConn, r.DownloadMTUBytes, r.StreamQueueCap, logger)
 	s.onClosed = r.onStreamClosed
+	s.notifyFn = r.udpSendNotify
 	r.Streams[streamID] = s
 
 	// Active streams tracking: keep sorted for Round-Robin predictability
@@ -1143,4 +1149,8 @@ func (r *sessionRecord) enqueueOrphanReset(packetType uint8, streamID uint16, se
 	key := orphanResetKey(packetType, streamID)
 	// Orphans have high priority (0).
 	r.OrphanQueue.Push(0, key, packet)
+
+	if r.udpSendNotify != nil {
+		r.udpSendNotify()
+	}
 }

@@ -58,7 +58,7 @@ func TestApplySessionInitPacketAppliesServerClientPolicy(t *testing.T) {
 	c.syncedDownloadMTU = 5000
 
 	verifyCode := [4]byte{1, 2, 3, 4}
-	initPayload := make([]byte, sessionInitPayloadSize)
+	initPayload := make([]byte, VpnProto.SessionInitBaseSize)
 	initPayload[0] = 1
 
 	var payload [VpnProto.SessionAcceptPayloadSize]byte
@@ -163,7 +163,7 @@ func TestApplySessionInitPacketAppliesServerClientPolicy(t *testing.T) {
 func TestApplySessionInitPacketAcceptsLegacySessionAcceptPayload(t *testing.T) {
 	c := buildTestClientWithResolvers(config.ClientConfig{}, "a")
 	verifyCode := [4]byte{4, 3, 2, 1}
-	initPayload := make([]byte, sessionInitPayloadSize)
+	initPayload := make([]byte, VpnProto.SessionInitBaseSize)
 
 	payload := make([]byte, VpnProto.SessionAcceptBasePayloadSize)
 	payload[0] = 3
@@ -232,7 +232,7 @@ func TestApplySessionInitPacketPreservesHigherTunnelProcessWorkers(t *testing.T)
 		Payload:    payload[:],
 	}
 
-	initPayload := make([]byte, sessionInitPayloadSize)
+	initPayload := make([]byte, VpnProto.SessionInitBaseSize)
 	initPayload[0] = 1
 
 	if err := c.applySessionInitPacket(packet, initPayload, verifyCode); err != nil {

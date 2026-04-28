@@ -10,6 +10,7 @@ package udpserver
 import (
 	"container/heap"
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -83,6 +84,10 @@ type Server struct {
 	lastDeferredDropLogUnix  atomic.Int64
 	pongNonce                atomic.Uint32
 	invalidDropMode          atomic.Uint32
+
+	// UDP download channel (server→client, asymmetric)
+	udpDownloadConn *net.UDPConn
+	udpSendSignal   chan struct{}
 }
 
 type request struct {
@@ -170,6 +175,15 @@ func New(cfg config.ServerConfig, log *logger.Logger, codec *security.Codec) *Se
 				return make([]byte, cfg.MaxPacketSize)
 			},
 		},
+		udpSendSignal: make(chan struct{}, 1),
+	}
+}
+
+// signalUDPSend wakes the UDP sender goroutine non-blockingly.
+func (s *Server) signalUDPSend() {
+	select {
+	case s.udpSendSignal <- struct{}{}:
+	default:
 	}
 }
 
@@ -306,6 +320,18 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
+	// Open the dedicated UDP download socket (server→client asymmetric channel).
+	dlAddr := &net.UDPAddr{IP: net.ParseIP(s.cfg.UDPHost), Port: s.cfg.UDPDownloadPort}
+	dlConn, err := net.ListenUDP("udp", dlAddr)
+	if err != nil {
+		return fmt.Errorf("failed to open UDP download socket on port %d: %w", s.cfg.UDPDownloadPort, err)
+	}
+	s.udpDownloadConn = dlConn
+	defer func() {
+		_ = dlConn.Close()
+		s.udpDownloadConn = nil
+	}()
+
 	s.log.Infof(
 		"\U0001F4E1 <green>UDP Listener Ready, Addr: <cyan>%s</cyan>, Readers: <cyan>%d</cyan>, Workers: <cyan>%d</cyan>, Queue: <cyan>%d</cyan>, Sockets: <cyan>%d</cyan></green>",
 		s.cfg.Address(),
@@ -313,6 +339,10 @@ func (s *Server) Run(ctx context.Context) error {
 		s.cfg.EffectiveDNSRequestWorkers(),
 		s.cfg.EffectiveMaxConcurrentRequests(),
 		len(conns),
+	)
+	s.log.Infof(
+		"\U0001F4E4 <green>UDP Download Channel Ready on port <cyan>%d</cyan></green>",
+		s.cfg.UDPDownloadPort,
 	)
 
 	reqCh := make(chan request, s.cfg.EffectiveMaxConcurrentRequests())
@@ -324,6 +354,9 @@ func (s *Server) Run(ctx context.Context) error {
 		s.sessionCleanupLoop(runCtx)
 	}()
 
+	// Start the UDP sender goroutine.
+	go s.runUDPSender(runCtx)
+
 	s.deferredDNSSession.Start(runCtx)
 	s.deferredConnectSession.Start(runCtx)
 	s.startDNSWorkers(runCtx, conns[0], reqCh, &workerWG)
@@ -333,6 +366,7 @@ func (s *Server) Run(ctx context.Context) error {
 		for _, conn := range conns {
 			_ = conn.Close()
 		}
+		_ = dlConn.Close()
 	}()
 
 	readErrCh := make(chan error, max(1, len(conns)))

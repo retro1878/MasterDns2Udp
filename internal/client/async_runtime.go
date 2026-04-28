@@ -21,6 +21,7 @@ import (
 	DnsParser "masterdnsvpn-go/internal/dnsparser"
 	Enums "masterdnsvpn-go/internal/enums"
 	fragmentStore "masterdnsvpn-go/internal/fragmentstore"
+	VpnProto "masterdnsvpn-go/internal/vpnproto"
 )
 
 const clientRXDropLogInterval = 2 * time.Second
@@ -29,6 +30,7 @@ type asyncReadPacket struct {
 	data      []byte
 	addr      *net.UDPAddr
 	localAddr string
+	isRawUDP  bool // true for packets arriving via the UDP download channel (no DNS wrapper)
 }
 
 func (c *Client) runtimePacketDuplicationCount(packetType uint8) int {
@@ -346,6 +348,26 @@ func (c *Client) StartAsyncRuntime(parentCtx context.Context) error {
 		}
 	}
 
+	// Open UDP download receive socket if configured.
+	if c.cfg.UDPDownloadPort > 0 {
+		dlConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: c.cfg.UDPDownloadPort})
+		if err != nil {
+			c.log.Errorf("<red>❌ Failed to open UDP download socket on port %d: %v</red>", c.cfg.UDPDownloadPort, err)
+			return err
+		}
+		c.udpDownloadConn = dlConn
+		c.log.Infof("\U0001F4E5 <cyan>UDP download socket ready on port <green>%d</green></cyan>", c.cfg.UDPDownloadPort)
+
+		// Close when context ends.
+		go func() {
+			<-runtimeCtx.Done()
+			_ = dlConn.Close()
+		}()
+
+		c.asyncWG.Add(1)
+		go c.asyncUDPDownloadReaderWorker(runtimeCtx, dlConn)
+	}
+
 	// 6. Spawn Reader Workers (High-speed ingestion)
 	for i := 0; i < c.tunnelRX_TX_Workers; i++ {
 		c.asyncWG.Add(1)
@@ -506,7 +528,7 @@ drainRX:
 }
 
 func (c *Client) closeTunnelSockets() {
-	if c == nil || len(c.tunnelConns) == 0 {
+	if c == nil {
 		return
 	}
 	for _, conn := range c.tunnelConns {
@@ -515,6 +537,10 @@ func (c *Client) closeTunnelSockets() {
 		}
 	}
 	c.tunnelConns = nil
+	if c.udpDownloadConn != nil {
+		_ = c.udpDownloadConn.Close()
+		c.udpDownloadConn = nil
+	}
 }
 
 // asyncPlanEncodeWorker chooses runtime targets, applies fan-out policy, encodes
@@ -866,11 +892,73 @@ func (c *Client) asyncProcessorWorker(ctx context.Context, id int) {
 		case <-ctx.Done():
 			return
 		case pkt := <-c.rxChannel:
-			c.handleInboundPacket(pkt.data, pkt.addr, pkt.localAddr)
-
+			if pkt.isRawUDP {
+				c.handleRawUDPDownloadPacket(pkt.data, pkt.addr)
+			} else {
+				c.handleInboundPacket(pkt.data, pkt.addr, pkt.localAddr)
+			}
 			// RECYCLE buffer back to the pool.
 			c.udpBufferPool.Put(pkt.data[:cap(pkt.data)])
 		}
+	}
+}
+
+// asyncUDPDownloadReaderWorker reads raw encrypted vpnproto packets from the
+// dedicated UDP download socket and enqueues them for processing.
+func (c *Client) asyncUDPDownloadReaderWorker(ctx context.Context, conn *net.UDPConn) {
+	defer c.asyncWG.Done()
+	c.log.Debugf("\U0001F4E5 <green>UDP Download Reader started</green>")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			buf := c.udpBufferPool.Get().([]byte)
+			n, addr, err := conn.ReadFromUDP(buf)
+			if err != nil {
+				c.udpBufferPool.Put(buf)
+				if ctx.Err() != nil {
+					return
+				}
+				continue
+			}
+			if n == 0 {
+				c.udpBufferPool.Put(buf)
+				continue
+			}
+
+			select {
+			case c.rxChannel <- asyncReadPacket{data: buf[:n], addr: addr, isRawUDP: true}:
+			default:
+				c.udpBufferPool.Put(buf)
+				c.onRXDrop(addr)
+			}
+		}
+	}
+}
+
+// handleRawUDPDownloadPacket decrypts and processes a raw vpnproto packet that
+// arrived on the dedicated UDP download channel (not wrapped in a DNS response).
+func (c *Client) handleRawUDPDownloadPacket(data []byte, addr *net.UDPAddr) {
+	decrypted, err := c.codec.Decrypt(data)
+	if err != nil {
+		return
+	}
+
+	vpnPacket, err := VpnProto.ParseInflated(decrypted)
+	if err != nil {
+		return
+	}
+
+	c.NotifyPacket(vpnPacket.PacketType, true)
+
+	if handled := c.preprocessInboundPacket(vpnPacket); handled {
+		return
+	}
+
+	if err := handlers.Dispatch(c, vpnPacket, addr); err != nil {
+		c.log.Debugf("\U0001F6A8 <red>UDP download handler failed: %v</red>", err)
 	}
 }
 

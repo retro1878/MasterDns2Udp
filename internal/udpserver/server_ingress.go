@@ -70,7 +70,10 @@ func (s *Server) handleTunnelCandidate(packet []byte, parsed DnsParser.LitePacke
 			return s.buildNoDataResponseLiteLogged(packet, parsed, fmt.Sprintf("post-session-unhandled-%s", Enums.PacketTypeName(vpnPacket.PacketType)))
 		}
 
-		return s.serveQueuedOrPong(packet, decision.RequestName, validation.record, time.Now())
+		// All server→client traffic goes via the UDP download channel.
+		// Signal the sender and return an empty NOERROR DNS response.
+		s.signalUDPSend()
+		return s.buildNoDataResponseLiteLogged(packet, parsed, "udp-mode")
 	}
 
 	switch vpnPacket.PacketType {

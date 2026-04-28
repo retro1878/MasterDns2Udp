@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"net"
 	"time"
 
 	"masterdnsvpn-go/internal/arq"
@@ -682,7 +683,8 @@ func buildPreSessionPacketTypes() [256]bool {
 }
 
 func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domainMatcher.Decision, vpnPacket VpnProto.Packet) []byte {
-	if vpnPacket.SessionID != 0 || len(vpnPacket.Payload) != sessionInitDataSize {
+	payloadLen := len(vpnPacket.Payload)
+	if vpnPacket.SessionID != 0 || (payloadLen != sessionInitDataSize && payloadLen != VpnProto.SessionInitUDPSize) {
 		return nil
 	}
 
@@ -714,6 +716,16 @@ func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domain
 		return nil
 	}
 	record.streamCleanup = s.cleanupStreamArtifacts
+
+	// If the client supplied a UDP endpoint, wire up the download channel.
+	if payloadLen == VpnProto.SessionInitUDPSize {
+		ip := net.IP(vpnPacket.Payload[10:14])
+		port := int(binary.BigEndian.Uint16(vpnPacket.Payload[14:16]))
+		if ip4 := ip.To4(); ip4 != nil && port > 0 {
+			record.ClientUDPAddr = &net.UDPAddr{IP: ip4, Port: port}
+			record.udpSendNotify = s.signalUDPSend
+		}
+	}
 
 	if !reused && s.log != nil {
 		s.log.Infof(

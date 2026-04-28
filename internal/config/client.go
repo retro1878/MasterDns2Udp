@@ -10,6 +10,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -33,6 +34,8 @@ type ClientConfig struct {
 	Domains                               []string          `toml:"DOMAINS"`
 	ListenIP                              string            `toml:"LISTEN_IP"`
 	ListenPort                            int               `toml:"LISTEN_PORT"`
+	UDPDownloadIP                         string            `toml:"UDP_DOWNLOAD_IP"`
+	UDPDownloadPort                       int               `toml:"UDP_DOWNLOAD_PORT"`
 	SOCKS5Auth                            bool              `toml:"SOCKS5_AUTH"`
 	SOCKS5User                            string            `toml:"SOCKS5_USER"`
 	SOCKS5Pass                            string            `toml:"SOCKS5_PASS"`
@@ -349,6 +352,16 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 
 	if cfg.ListenPort < 0 || cfg.ListenPort > 65535 {
 		return cfg, fmt.Errorf("invalid LISTEN_PORT: %d", cfg.ListenPort)
+	}
+
+	cfg.UDPDownloadIP = strings.TrimSpace(cfg.UDPDownloadIP)
+	if cfg.UDPDownloadIP != "" {
+		if net.ParseIP(cfg.UDPDownloadIP) == nil {
+			return cfg, fmt.Errorf("invalid UDP_DOWNLOAD_IP: %q", cfg.UDPDownloadIP)
+		}
+		if cfg.UDPDownloadPort < 1 || cfg.UDPDownloadPort > 65535 {
+			return cfg, fmt.Errorf("UDP_DOWNLOAD_IP is set but UDP_DOWNLOAD_PORT is invalid: %d", cfg.UDPDownloadPort)
+		}
 	}
 
 	if len(cfg.SOCKS5User) > 255 {

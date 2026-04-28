@@ -14,7 +14,9 @@ import (
 	"sync"
 	"time"
 
+	Enums "masterdnsvpn-go/internal/enums"
 	"masterdnsvpn-go/internal/logger"
+	VpnProto "masterdnsvpn-go/internal/vpnproto"
 )
 
 func (s *Server) configureSocketBuffers(conn *net.UDPConn) {
@@ -277,4 +279,126 @@ func (s *Server) onDrop(addr *net.UDPAddr, queueLen int, queueCap int) {
 		queueCap,
 		addr,
 	)
+}
+
+// runUDPSender is the background goroutine that forwards all server→client
+// traffic over the dedicated UDP download channel instead of DNS responses.
+// It wakes on udpSendSignal or a 10 ms heartbeat, then drains every session
+// whose client registered a UDP download address during session init.
+func (s *Server) runUDPSender(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.udpSendSignal:
+			s.drainUDPSendQueues()
+		case <-ticker.C:
+			s.drainUDPSendQueues()
+		}
+	}
+}
+
+func (s *Server) drainUDPSendQueues() {
+	conn := s.udpDownloadConn
+	if conn == nil {
+		return
+	}
+
+	s.sessions.mu.RLock()
+	records := make([]*sessionRecord, 0, 16)
+	for _, record := range s.sessions.byID {
+		if record != nil && !record.isClosed() && record.ClientUDPAddr != nil {
+			records = append(records, record)
+		}
+	}
+	s.sessions.mu.RUnlock()
+
+	now := time.Now()
+	for _, record := range records {
+		s.sendUDPPacketsForSession(conn, record, now)
+	}
+}
+
+func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionRecord, now time.Time) {
+	dst := record.ClientUDPAddr
+	if dst == nil {
+		return
+	}
+
+	mtu := record.DownloadMTUBytes
+	sessionID := record.ID
+	cookie := record.Cookie
+
+	// Drain orphan queue first (highest priority — RST/FIN control packets).
+	if record.OrphanQueue != nil {
+		for {
+			pkt, _, ok := record.OrphanQueue.Pop()
+			if !ok {
+				break
+			}
+			s.sendRawVPNPacketUDP(conn, dst, VpnProto.BuildOptions{
+				SessionID:     sessionID,
+				SessionCookie: cookie,
+				PacketType:    pkt.PacketType,
+				StreamID:      pkt.StreamID,
+				SequenceNum:   pkt.SequenceNum,
+				Payload:       pkt.Payload,
+			}, mtu)
+		}
+	}
+
+	// Drain stream TX queues using a round-robin snapshot.
+	_, streams := record.activeStreamSnapshot()
+	for _, stream := range streams {
+		if stream == nil {
+			continue
+		}
+		if stream.ARQ != nil && stream.ARQ.IsClosed() {
+			stream.ClearTXQueue()
+			continue
+		}
+		for {
+			txPkt, _, ok := stream.PopNextTXPacket()
+			if !ok {
+				break
+			}
+			stream.NoteTXPacketDequeued(txPkt)
+
+			// Drop stale data packets that ARQ has already abandoned.
+			if (txPkt.PacketType == Enums.PACKET_STREAM_DATA || txPkt.PacketType == Enums.PACKET_STREAM_RESEND) &&
+				stream.ARQ != nil && !stream.ARQ.HasPendingSequence(txPkt.SequenceNum) {
+				putTXPacketToPool(txPkt)
+				continue
+			}
+
+			s.sendRawVPNPacketUDP(conn, dst, VpnProto.BuildOptions{
+				SessionID:       sessionID,
+				SessionCookie:   cookie,
+				PacketType:      txPkt.PacketType,
+				StreamID:        stream.ID,
+				SequenceNum:     txPkt.SequenceNum,
+				FragmentID:      txPkt.FragmentID,
+				TotalFragments:  txPkt.TotalFragments,
+				CompressionType: txPkt.CompressionType,
+				Payload:         txPkt.Payload,
+			}, mtu)
+			putTXPacketToPool(txPkt)
+		}
+	}
+	_ = now
+}
+
+func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts VpnProto.BuildOptions, mtu int) {
+	raw, err := VpnProto.BuildRawAuto(opts, mtu)
+	if err != nil {
+		return
+	}
+	encrypted, err := s.codec.Encrypt(raw)
+	if err != nil {
+		return
+	}
+	_, _ = conn.WriteToUDP(encrypted, dst)
 }

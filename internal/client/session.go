@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -31,7 +32,6 @@ var (
 )
 
 const (
-	sessionInitPayloadSize      = 10
 	sessionAcceptPayloadSize    = VpnProto.SessionAcceptPayloadSize
 	sessionBusyPayloadSize      = 4
 	sessionCloseBurstMaxTargets = 10
@@ -357,7 +357,13 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 	}
 	copy(verifyCode[:], randomPart)
 
-	payload := make([]byte, sessionInitPayloadSize)
+	size := VpnProto.SessionInitBaseSize
+	hasUDP := c.cfg.UDPDownloadIP != "" && c.cfg.UDPDownloadPort > 0
+	if hasUDP {
+		size = VpnProto.SessionInitUDPSize
+	}
+
+	payload := make([]byte, size)
 	if c.cfg.BaseEncodeData {
 		payload[0] = mtuProbeBase64Reply
 	}
@@ -365,6 +371,16 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 	binary.BigEndian.PutUint16(payload[2:4], uint16(c.syncedUploadMTU))
 	binary.BigEndian.PutUint16(payload[4:6], uint16(c.syncedDownloadMTU))
 	copy(payload[6:10], verifyCode[:])
+
+	if hasUDP {
+		ip := net.ParseIP(c.cfg.UDPDownloadIP).To4()
+		if ip == nil {
+			return nil, false, verifyCode, fmt.Errorf("UDP_DOWNLOAD_IP is not a valid IPv4 address: %s", c.cfg.UDPDownloadIP)
+		}
+		copy(payload[10:14], ip)
+		binary.BigEndian.PutUint16(payload[14:16], uint16(c.cfg.UDPDownloadPort))
+	}
+
 	return payload, payload[0] == mtuProbeBase64Reply, verifyCode, nil
 }
 

@@ -29,6 +29,7 @@ type ServerConfig struct {
 	ProtocolType                      string   `toml:"PROTOCOL_TYPE"`
 	UDPHost                           string   `toml:"UDP_HOST"`
 	UDPPort                           int      `toml:"UDP_PORT"`
+	UDPDownloadPort                   int      `toml:"UDP_DOWNLOAD_PORT"`
 	UDPReaders                        int      `toml:"UDP_READERS"`
 	SocketBufferSize                  int      `toml:"SOCKET_BUFFER_SIZE"`
 	MaxConcurrentRequests             int      `toml:"MAX_CONCURRENT_REQUESTS"`
@@ -287,6 +288,13 @@ func finalizeServerConfig(cfg ServerConfig) (ServerConfig, error) {
 
 	if cfg.UDPPort <= 0 || cfg.UDPPort > 65535 {
 		return cfg, fmt.Errorf("invalid UDP_PORT: %d", cfg.UDPPort)
+	}
+
+	if cfg.UDPDownloadPort == 0 {
+		cfg.UDPDownloadPort = 5555
+	}
+	if cfg.UDPDownloadPort < 1 || cfg.UDPDownloadPort > 65535 {
+		return cfg, fmt.Errorf("invalid UDP_DOWNLOAD_PORT: %d", cfg.UDPDownloadPort)
 	}
 
 	if cfg.UDPReaders <= 0 {

@@ -39,6 +39,7 @@ type Stream_server struct {
 	TargetPort   uint16
 	Connected    bool
 	onClosed     func(uint16, time.Time, string)
+	notifyFn     func() // called after a packet is successfully queued
 	log          arq.Logger
 }
 
@@ -135,7 +136,9 @@ func (s *Stream_server) PushTXPacket(priority int, packetType uint8, sequenceNum
 
 	s.txQueueMu.Unlock()
 
-	// Notify session that this stream is active (handled by the caller or session management)
+	if s.notifyFn != nil {
+		s.notifyFn()
+	}
 	return true
 }
 
