@@ -185,17 +185,65 @@ check_arch
 banner "Installation type"
 echo "  1) Server  (runs on the Iran server — receives DNS tunnel traffic)"
 echo "  2) Client  (runs on the outside server — local SOCKS5 proxy)"
+echo "  3) Update  (re-download binaries for an existing installation)"
 echo
 MODE=""
-while [[ $MODE != "1" && $MODE != "2" ]]; do
-    read -rp "$(echo -e "${BOLD}Choose [1/2]: ${NC}")" MODE
+while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" ]]; do
+    read -rp "$(echo -e "${BOLD}Choose [1/2/3]: ${NC}")" MODE
 done
-[[ $MODE == "1" ]] && ROLE="server" || ROLE="client"
-echo
-ok "Installing as: ${ROLE}"
 
 # ── Prepare install directory ─────────────────────────────────────────────────
 mkdir -p "$INSTALL_DIR"
+
+# =============================================================================
+# UPDATE (re-download binaries for whichever roles are already installed)
+# =============================================================================
+if [[ $MODE == "3" ]]; then
+    banner "Updating binaries"
+
+    found=0
+    for binary in masterdns2udp-server masterdns2udp-client; do
+        dest="${INSTALL_DIR}/${binary}"
+        unit="${binary}"
+        if [[ -x "$dest" ]]; then
+            download_binary "$binary" "$dest"
+            found=1
+
+            # Restart the systemd service if it exists and was running.
+            if systemctl is-active --quiet "$unit" 2>/dev/null; then
+                systemctl restart "$unit" \
+                    && ok "Service ${unit} restarted" \
+                    || warn "Failed to restart ${unit} — check: journalctl -u ${unit} -n 20"
+            elif systemctl is-enabled --quiet "$unit" 2>/dev/null; then
+                info "Service ${unit} is enabled but not running — starting it"
+                systemctl start "$unit" \
+                    && ok "Service ${unit} started" \
+                    || warn "Failed to start ${unit} — check: journalctl -u ${unit} -n 20"
+            fi
+        else
+            info "${binary} not found in ${INSTALL_DIR} — skipping"
+        fi
+    done
+
+    if [[ $found -eq 0 ]]; then
+        warn "No existing binaries found in ${INSTALL_DIR}."
+        warn "Run option 1 (server) or 2 (client) to do a fresh install first."
+        exit 1
+    fi
+
+    banner "Done"
+    echo
+    ok "Binaries updated in ${INSTALL_DIR}"
+    echo
+    echo -e "  Check status : ${CYAN}systemctl status masterdns2udp-server${NC}"
+    echo -e "               : ${CYAN}systemctl status masterdns2udp-client${NC}"
+    echo
+    exit 0
+fi
+
+[[ $MODE == "1" ]] && ROLE="server" || ROLE="client"
+echo
+ok "Installing as: ${ROLE}"
 
 # =============================================================================
 # SERVER
