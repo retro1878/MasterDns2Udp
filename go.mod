@@ -1,11 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
-module masterdnsvpn-go
+module masterdns2udp
 
 go 1.25.0
 

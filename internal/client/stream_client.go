@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -13,10 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/mlq"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/mlq"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 var txPacketPool = sync.Pool{

@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (socks_ratelimit.go) implements IP-based rate limiting for SOCKS5
 // authentication failures to mitigate brute-force credential stuffing attacks.
 // ==============================================================================

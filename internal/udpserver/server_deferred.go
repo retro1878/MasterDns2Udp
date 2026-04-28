@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	Enums "masterdnsvpn-go/internal/enums"
-	SocksProto "masterdnsvpn-go/internal/socksproto"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	Enums "masterdns2udp/internal/enums"
+	SocksProto "masterdns2udp/internal/socksproto"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 const maxDeferredConnectAttemptTimeout = 15 * time.Second

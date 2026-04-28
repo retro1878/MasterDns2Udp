@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 package main
@@ -17,12 +17,12 @@ import (
 	"strings"
 	"syscall"
 
-	"masterdnsvpn-go/internal/config"
-	"masterdnsvpn-go/internal/logger"
-	"masterdnsvpn-go/internal/runtimepath"
-	"masterdnsvpn-go/internal/security"
-	UDPServer "masterdnsvpn-go/internal/udpserver"
-	"masterdnsvpn-go/internal/version"
+	"masterdns2udp/internal/config"
+	"masterdns2udp/internal/logger"
+	"masterdns2udp/internal/runtimepath"
+	"masterdns2udp/internal/security"
+	UDPServer "masterdns2udp/internal/udpserver"
+	"masterdns2udp/internal/version"
 )
 
 func waitForExitInput() {
@@ -49,7 +49,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Printf("MasterDnsVPN Server Version: %s\n", version.GetVersion())
+		fmt.Printf("MasterDns2Udp Server Version: %s\n", version.GetVersion())
 		return
 	}
 
@@ -93,18 +93,18 @@ func main() {
 
 	var log *logger.Logger
 	if *logPath != "" {
-		log = logger.NewWithFile("MasterDnsVPN Server", cfg.LogLevel, *logPath)
+		log = logger.NewWithFile("MasterDns2Udp Server", cfg.LogLevel, *logPath)
 	} else {
-		log = logger.New("MasterDnsVPN Server", cfg.LogLevel)
+		log = logger.New("MasterDns2Udp Server", cfg.LogLevel)
 	}
 
 	log.Infof("============================================================")
-	log.Infof("<cyan>GitHub:</cyan> <yellow>https://github.com/masterking32/MasterDnsVPN</yellow>")
-	log.Infof("<cyan>Telegram:</cyan> <yellow>@MasterDnsVPN</yellow>")
+	log.Infof("<cyan>GitHub:</cyan> <yellow>https://github.com/retro1878/MasterDns2Udp</yellow>")
+	log.Infof("<cyan>Telegram:</cyan> <yellow>@MasterDns2Udp</yellow>")
 	log.Infof("<cyan>Build Version:</cyan> <yellow>%s</yellow>", version.GetVersion())
 	log.Infof("============================================================")
 
-	log.Infof("\U0001F680 <magenta>MasterDnsVPN Server starting ...</magenta>")
+	log.Infof("\U0001F680 <magenta>MasterDns2Udp Server starting ...</magenta>")
 
 	keyInfo, err := security.EnsureServerEncryptionKey(cfg)
 	if err != nil {

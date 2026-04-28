@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -10,8 +10,8 @@ package vpnproto
 import (
 	"errors"
 
-	"masterdnsvpn-go/internal/compression"
-	"masterdnsvpn-go/internal/security"
+	"masterdns2udp/internal/compression"
+	"masterdns2udp/internal/security"
 )
 
 var ErrInvalidCompressedPayload = errors.New("invalid compressed vpn payload")

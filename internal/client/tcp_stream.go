@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 package client
@@ -12,9 +12,9 @@ import (
 	"net"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	Enums "masterdnsvpn-go/internal/enums"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	Enums "masterdns2udp/internal/enums"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 var errLateStreamResult = errors.New("late stream result for closed or terminal local stream")

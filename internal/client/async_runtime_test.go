@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	"masterdnsvpn-go/internal/config"
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
-	"masterdnsvpn-go/internal/mlq"
-	"masterdnsvpn-go/internal/security"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	"masterdns2udp/internal/config"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
+	"masterdns2udp/internal/mlq"
+	"masterdns2udp/internal/security"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 func createTestClient(t *testing.T) *Client {

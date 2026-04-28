@@ -1,18 +1,18 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (tunnel_query.go) handles the construction of DNS tunnel queries.
 // ==============================================================================
 package client
 
 import (
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 type preparedTunnelDomain struct {

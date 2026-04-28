@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -11,8 +11,8 @@ import (
 	"bytes"
 	"testing"
 
-	"masterdnsvpn-go/internal/compression"
-	Enums "masterdnsvpn-go/internal/enums"
+	"masterdns2udp/internal/compression"
+	Enums "masterdns2udp/internal/enums"
 )
 
 func TestPreparePayloadCompressesSupportedPacket(t *testing.T) {

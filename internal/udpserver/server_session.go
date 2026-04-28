@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -14,12 +14,12 @@ import (
 	"net"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	"masterdnsvpn-go/internal/compression"
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	domainMatcher "masterdnsvpn-go/internal/domainmatcher"
-	Enums "masterdnsvpn-go/internal/enums"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	"masterdns2udp/internal/compression"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	domainMatcher "masterdns2udp/internal/domainmatcher"
+	Enums "masterdns2udp/internal/enums"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 func (s *Server) validatePostSessionPacket(questionPacket []byte, requestName string, vpnPacket VpnProto.Packet) postSessionValidation {

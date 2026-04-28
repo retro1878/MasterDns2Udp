@@ -4,13 +4,13 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"masterdnsvpn-go/internal/arq"
-	"masterdnsvpn-go/internal/compression"
-	"masterdnsvpn-go/internal/config"
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	domainMatcher "masterdnsvpn-go/internal/domainmatcher"
-	Enums "masterdnsvpn-go/internal/enums"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	"masterdns2udp/internal/compression"
+	"masterdns2udp/internal/config"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	domainMatcher "masterdns2udp/internal/domainmatcher"
+	Enums "masterdns2udp/internal/enums"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 func TestSessionInitPolicyMTULimitsAreAppliedToServerSession(t *testing.T) {

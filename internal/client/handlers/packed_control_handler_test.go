@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 package handlers
@@ -9,9 +9,9 @@ package handlers
 import (
 	"testing"
 
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 type packedTestClientContext struct {

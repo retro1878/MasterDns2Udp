@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -11,10 +11,10 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"masterdnsvpn-go/internal/compression"
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
+	"masterdns2udp/internal/compression"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
 )
 
 func (s *Server) debugLoggingEnabled() bool {

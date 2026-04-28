@@ -1,13 +1,13 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
 package vpnproto
 
-import "masterdnsvpn-go/internal/security"
+import "masterdns2udp/internal/security"
 
 type BuildOptions struct {
 	SessionID       uint8

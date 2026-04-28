@@ -3,7 +3,7 @@ package vpnproto
 import (
 	"testing"
 
-	Enums "masterdnsvpn-go/internal/enums"
+	Enums "masterdns2udp/internal/enums"
 )
 
 func TestIsPackableControlPacketIncludesSmallSocksResults(t *testing.T) {

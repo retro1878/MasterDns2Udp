@@ -23,8 +23,8 @@ var (
 	payloadMiB = flag.Int("bytes", 100*1024*1024, "Payload size in bytes (default 100MiB)")
 	forceBuild = flag.Bool("force-build", true, "Force rebuilding binaries")
 	benchPort  = flag.Int("bench-port", 19090, "Legacy port (not used much now with dynamic targets)")
-	clientPort = flag.Int("client-port", 18080, "Port for the MasterDnsVPN client listener")
-	serverPort = flag.Int("server-port", 5300, "Port for the MasterDnsVPN server UDP listener")
+	clientPort = flag.Int("client-port", 18080, "Port for the MasterDns2Udp client listener")
+	serverPort = flag.Int("server-port", 5300, "Port for the MasterDns2Udp server UDP listener")
 
 	// Standalone / slipstream-like flags
 	optMode         = flag.String("mode", "", "Standalone mode: 'sink', 'source', 'send', 'recv'")
@@ -78,7 +78,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("🚀 Starting MasterDnsVPN Go-Benchmark (slipstream-style timing)\n")
+	fmt.Printf("🚀 Starting MasterDns2Udp Go-Benchmark (slipstream-style timing)\n")
 	fmt.Printf("📂 Working Dir: %s\n", benchDir)
 	fmt.Printf("💾 Payload: %.2f MiB | Runs: %d\n\n", float64(*payloadMiB)/(1024*1024), *runs)
 
@@ -423,7 +423,7 @@ func waitForPattern(buf *safeBuffer, pattern string, timeout time.Duration) erro
 func printSummary(exfil, download []BenchResult) {
 	fmt.Println()
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("📊 MasterDnsVPN Benchmark Summary (Avg of %d runs)\n", *runs)
+	fmt.Printf("📊 MasterDns2Udp Benchmark Summary (Avg of %d runs)\n", *runs)
 	fmt.Println(strings.Repeat("=", 60))
 
 	fmt.Printf("%-15s | %-12s | %-15s\n", "Direction", "Avg Time (s)", "Avg Speed (MiB/s)")

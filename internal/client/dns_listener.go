@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 package client
@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	dnsCache "masterdnsvpn-go/internal/dnscache"
-	dnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/netutil"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	dnsCache "masterdns2udp/internal/dnscache"
+	dnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/netutil"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 type dnsFragmentKey struct {

@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -11,11 +11,11 @@ import (
 	"context"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
-	SocksProto "masterdnsvpn-go/internal/socksproto"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
+	SocksProto "masterdns2udp/internal/socksproto"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 type deferredDispatchResult uint8

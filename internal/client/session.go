@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (session.go) handles session states and initialization requests.
 // ==============================================================================
 package client
@@ -19,11 +19,11 @@ import (
 	"sync"
 	"time"
 
-	"masterdnsvpn-go/internal/compression"
-	Enums "masterdnsvpn-go/internal/enums"
-	fragmentStore "masterdnsvpn-go/internal/fragmentstore"
-	"masterdnsvpn-go/internal/mlq"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/compression"
+	Enums "masterdns2udp/internal/enums"
+	fragmentStore "masterdns2udp/internal/fragmentstore"
+	"masterdns2udp/internal/mlq"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 var (

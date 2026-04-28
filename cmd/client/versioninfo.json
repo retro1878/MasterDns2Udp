@@ -19,15 +19,15 @@
         "FileSubtype": "00"
     },
     "StringFileInfo": {
-        "Comments": "MasterDnsVPN Client",
-        "CompanyName": "MasterkinG32",
-        "FileDescription": "MasterDnsVPN Client",
+        "Comments": "MasterDns2Udp Client",
+        "CompanyName": "retro1878",
+        "FileDescription": "MasterDns2Udp Client",
         "FileVersion": "1.1.0.0",
-        "InternalName": "MasterDnsVPN_Client",
-        "LegalCopyright": "Copyright (c) 2026 MasterkinG32",
+        "InternalName": "MasterDns2Udp_Client",
+        "LegalCopyright": "Copyright (c) 2026 retro1878",
         "LegalTrademarks": "",
-        "OriginalFilename": "MasterDnsVPN_Client.exe",
-        "ProductName": "MasterDnsVPN",
+        "OriginalFilename": "MasterDns2Udp_Client.exe",
+        "ProductName": "MasterDns2Udp",
         "ProductVersion": "1.1.0.0"
     },
     "VarFileInfo": {

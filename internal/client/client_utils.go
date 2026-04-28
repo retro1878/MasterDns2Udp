@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (client_utils.go) handles common client utility functions.
 // ==============================================================================
 package client
@@ -18,11 +18,11 @@ import (
 	"strings"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
-	"masterdnsvpn-go/internal/version"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
+	"masterdns2udp/internal/version"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 // randomBytes generates random bytes using a cryptographically secure PRNG.
@@ -554,8 +554,8 @@ func (c *Client) ShortPrintBanner() {
 	}
 
 	c.log.Infof("============================================================")
-	c.log.Infof("<cyan>GitHub:</cyan> <yellow>https://github.com/masterking32/MasterDnsVPN</yellow>")
-	c.log.Infof("<cyan>Telegram:</cyan> <yellow>@MasterDnsVPN</yellow>")
+	c.log.Infof("<cyan>GitHub:</cyan> <yellow>https://github.com/retro1878/MasterDns2Udp</yellow>")
+	c.log.Infof("<cyan>Telegram:</cyan> <yellow>@MasterDns2Udp</yellow>")
 	c.log.Infof("<cyan>Build Version:</cyan> <yellow>%s</yellow>", version.GetVersion())
 	c.log.Infof("============================================================")
 }

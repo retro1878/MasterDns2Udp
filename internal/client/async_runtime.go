@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (async_runtime.go) handles async parallel background workers.
 // ==============================================================================
 package client
@@ -16,12 +16,12 @@ import (
 	"net"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	"masterdnsvpn-go/internal/client/handlers"
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	fragmentStore "masterdnsvpn-go/internal/fragmentstore"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	"masterdns2udp/internal/client/handlers"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	fragmentStore "masterdns2udp/internal/fragmentstore"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 const clientRXDropLogInterval = 2 * time.Second

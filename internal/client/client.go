@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic and initialization for the MasterDnsVPN client.
+// Package client provides the core logic and initialization for the MasterDns2Udp client.
 // This file (client.go) defines the main Client struct and bootstrapping process.
 // ==============================================================================
 package client
@@ -17,15 +17,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	"masterdnsvpn-go/internal/config"
-	dnsCache "masterdnsvpn-go/internal/dnscache"
-	Enums "masterdnsvpn-go/internal/enums"
-	fragmentStore "masterdnsvpn-go/internal/fragmentstore"
-	"masterdnsvpn-go/internal/logger"
-	"masterdnsvpn-go/internal/mlq"
-	"masterdnsvpn-go/internal/security"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	"masterdns2udp/internal/config"
+	dnsCache "masterdns2udp/internal/dnscache"
+	Enums "masterdns2udp/internal/enums"
+	fragmentStore "masterdns2udp/internal/fragmentstore"
+	"masterdns2udp/internal/logger"
+	"masterdns2udp/internal/mlq"
+	"masterdns2udp/internal/security"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 const (
@@ -219,9 +219,9 @@ func Bootstrap(configPath string, logPath string, overrides config.ClientConfigO
 func BootstrapLoadedConfig(cfg config.ClientConfig, logPath string) (*Client, error) {
 	var log *logger.Logger
 	if logPath != "" {
-		log = logger.NewWithFile("MasterDnsVPN Client", cfg.LogLevel, logPath)
+		log = logger.NewWithFile("MasterDns2Udp Client", cfg.LogLevel, logPath)
 	} else {
-		log = logger.New("MasterDnsVPN Client", cfg.LogLevel)
+		log = logger.New("MasterDns2Udp Client", cfg.LogLevel)
 	}
 
 	codec, err := security.NewCodec(cfg.DataEncryptionMethod, cfg.EncryptionKey)

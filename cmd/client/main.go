@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -19,10 +19,10 @@ import (
 	"strings"
 	"syscall"
 
-	"masterdnsvpn-go/internal/client"
-	"masterdnsvpn-go/internal/config"
-	"masterdnsvpn-go/internal/runtimepath"
-	"masterdnsvpn-go/internal/version"
+	"masterdns2udp/internal/client"
+	"masterdns2udp/internal/config"
+	"masterdns2udp/internal/runtimepath"
+	"masterdns2udp/internal/version"
 )
 
 func samePath(a string, b string) bool {
@@ -73,7 +73,7 @@ func printClientUsage(fs *flag.FlagSet) {
 		bin = "masterdnsvpn-client"
 	}
 
-	fmt.Fprintf(fs.Output(), "MasterDnsVPN Client - A high-performance DNS-based VPN Tunnel\n\n")
+	fmt.Fprintf(fs.Output(), "MasterDns2Udp Client - A high-performance asymmetric DNS tunnel\n\n")
 	fmt.Fprintf(fs.Output(), "Usage:\n")
 	fmt.Fprintf(fs.Output(), "  %s [flags]\n\n", bin)
 	fmt.Fprintf(fs.Output(), "Examples:\n")
@@ -210,7 +210,7 @@ func main() {
 	}
 
 	if opts.showVersion {
-		fmt.Printf("MasterDnsVPN Client Version: %s\n", version.GetVersion())
+		fmt.Printf("MasterDns2Udp Client Version: %s\n", version.GetVersion())
 		return
 	}
 
@@ -243,7 +243,7 @@ func main() {
 
 	log := app.Log()
 	if log != nil {
-		log.Infof("\U0001F680 <green>MasterDnsVPN Client Started</green>")
+		log.Infof("\U0001F680 <green>MasterDns2Udp Client Started</green>")
 		log.Infof("\U0001F4C4 <green>Configuration loaded from: <cyan>%s</cyan></green>", resolvedConfigPath)
 		log.Infof("\U0001F5C2  <green>Connection Catalog: <cyan>%d</cyan> domain-resolver pairs</green>", app.Balancer().TotalCount())
 	}

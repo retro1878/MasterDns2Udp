@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"masterdnsvpn-go/internal/dnscache"
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/inflight"
+	"masterdns2udp/internal/dnscache"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/inflight"
 )
 
 var ErrInvalidDNSUpstream = errors.New("invalid dns upstream")

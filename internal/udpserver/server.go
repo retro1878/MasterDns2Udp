@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -17,13 +17,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"masterdnsvpn-go/internal/config"
-	dnsCache "masterdnsvpn-go/internal/dnscache"
-	domainMatcher "masterdnsvpn-go/internal/domainmatcher"
-	fragmentStore "masterdnsvpn-go/internal/fragmentstore"
-	"masterdnsvpn-go/internal/logger"
-	"masterdnsvpn-go/internal/security"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/config"
+	dnsCache "masterdns2udp/internal/dnscache"
+	domainMatcher "masterdns2udp/internal/domainmatcher"
+	fragmentStore "masterdns2udp/internal/fragmentstore"
+	"masterdns2udp/internal/logger"
+	"masterdns2udp/internal/security"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 const (

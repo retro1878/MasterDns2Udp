@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"masterdnsvpn-go/internal/compression"
-	"masterdnsvpn-go/internal/config"
-	Enums "masterdnsvpn-go/internal/enums"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/compression"
+	"masterdns2udp/internal/config"
+	Enums "masterdns2udp/internal/enums"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 func TestNextSessionInitAttemptUsesBalancerSnapshotConnection(t *testing.T) {

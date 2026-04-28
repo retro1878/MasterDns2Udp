@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -20,7 +20,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"masterdnsvpn-go/internal/compression"
+	"masterdns2udp/internal/compression"
 )
 
 type ServerConfig struct {

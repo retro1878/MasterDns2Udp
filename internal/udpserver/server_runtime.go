@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 func (s *Server) configureSocketBuffers(conn *net.UDPConn) {

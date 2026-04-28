@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 // Package arq provides a high-performance, QUIC-inspired reliable transport
@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	Enums "masterdnsvpn-go/internal/enums"
+	Enums "masterdns2udp/internal/enums"
 )
 
 // StreamState mirrors Python's Stream_State enum

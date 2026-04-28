@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"masterdnsvpn-go/internal/arq"
-	"masterdnsvpn-go/internal/config"
-	Enums "masterdnsvpn-go/internal/enums"
-	fragmentStore "masterdnsvpn-go/internal/fragmentstore"
-	"masterdnsvpn-go/internal/mlq"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/arq"
+	"masterdns2udp/internal/config"
+	Enums "masterdns2udp/internal/enums"
+	fragmentStore "masterdns2udp/internal/fragmentstore"
+	"masterdns2udp/internal/mlq"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 type testReadWriteCloser struct {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"masterdnsvpn-go/internal/config"
+	"masterdns2udp/internal/config"
 )
 
 func buildTestClientWithResolvers(cfg config.ClientConfig, keys ...string) *Client {

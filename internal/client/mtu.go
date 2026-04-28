@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (mtu.go) handles MTU discovery and probing.
 // ==============================================================================
 package client
@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	DnsParser "masterdnsvpn-go/internal/dnsparser"
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	DnsParser "masterdns2udp/internal/dnsparser"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 var ErrNoValidConnections = errors.New("no valid connections after mtu testing")

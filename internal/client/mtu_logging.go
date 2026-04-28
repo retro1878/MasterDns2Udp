@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (mtu_logging.go) handles logging for MTU testing.
 // ==============================================================================
 package client
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"masterdnsvpn-go/internal/logger"
+	"masterdns2udp/internal/logger"
 )
 
 const (

@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -9,7 +9,7 @@ package version
 
 import "strings"
 
-// BuildVersion is set at link-time using -ldflags "-X masterdnsvpn-go/internal/version.BuildVersion=..."
+// BuildVersion is set at link-time using -ldflags "-X masterdns2udp/internal/version.BuildVersion=..."
 var BuildVersion = "dev"
 
 // GetVersion returns the current build version.

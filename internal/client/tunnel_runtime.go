@@ -1,10 +1,10 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
-// Package client provides the core logic for the MasterDnsVPN client.
+// Package client provides the core logic for the MasterDns2Udp client.
 // This file (tunnel_runtime.go) handles low-level UDP network operations,
 // including sending DNS-encapsulated packets and receiving responses.
 // ==============================================================================
@@ -17,8 +17,8 @@ import (
 	"net"
 	"time"
 
-	"masterdnsvpn-go/internal/dnsparser"
-	VpnProto "masterdnsvpn-go/internal/vpnproto"
+	"masterdns2udp/internal/dnsparser"
+	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
 const (

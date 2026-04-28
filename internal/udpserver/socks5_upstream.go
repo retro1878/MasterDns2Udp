@@ -1,7 +1,7 @@
 // ==============================================================================
-// MasterDnsVPN
-// Author: MasterkinG32
-// Github: https://github.com/masterking32
+// MasterDns2Udp
+
+// Github: https://github.com/retro1878/MasterDns2Udp
 // Year: 2026
 // ==============================================================================
 
@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	Enums "masterdnsvpn-go/internal/enums"
-	"masterdnsvpn-go/internal/logger"
+	Enums "masterdns2udp/internal/enums"
+	"masterdns2udp/internal/logger"
 )
 
 type upstreamSOCKS5Error struct {
