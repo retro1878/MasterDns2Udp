@@ -19,7 +19,7 @@ banner() { echo -e "\n${BOLD}${CYAN}── $* ──${NC}"; }
 # ── Constants ─────────────────────────────────────────────────────────────────
 REPO_RAW="https://raw.githubusercontent.com/retro1878/MasterDns2Udp/claude/setup-dns-tunneling-QICmN"
 INSTALL_DIR="/opt/masterdns2udp"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" && pwd)"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 ask() {
