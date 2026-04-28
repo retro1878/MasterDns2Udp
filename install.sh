@@ -301,7 +301,7 @@ EOF
     ok "Server installed in ${INSTALL_DIR}"
     echo
     echo -e "  ${BOLD}Your encryption key (paste into client installer):${NC}"
-    echo -e "  ${GREEN}${ENC_KEY}${NC}"
+    echo -e "  ${GREEN}$(cat "${INSTALL_DIR}/encrypt_key.txt")${NC}"
     echo
     echo -e "  ${BOLD}Reminder:${NC} set the NS record for ${CYAN}${DOMAIN}${NC}"
     echo -e "  to point to this server's public IP so DNS resolvers"
