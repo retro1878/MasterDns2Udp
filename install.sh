@@ -140,10 +140,10 @@ download_binary() {
     local name=$1 dest=$2
     info "Downloading ${name} from GitHub..."
     if command -v curl &>/dev/null; then
-        curl -fsSL "${REPO_RAW}/${name}" -o "$dest" \
+        curl -fsSL "${REPO_RAW}/bin/${name}" -o "$dest" \
             || die "Failed to download ${name} with curl."
     elif command -v wget &>/dev/null; then
-        wget -q "${REPO_RAW}/${name}" -O "$dest" \
+        wget -q "${REPO_RAW}/bin/${name}" -O "$dest" \
             || die "Failed to download ${name} with wget."
     else
         die "Neither curl nor wget is available. Install one and retry."
