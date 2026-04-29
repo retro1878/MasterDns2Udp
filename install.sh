@@ -415,8 +415,10 @@ else
         ask_optional VIO_DL_PORT \
             "Closed port on this machine for VioTCP (0 = disable Mode B)" "0"
         if [[ $VIO_DL_PORT != "0" ]]; then
+            echo "  Enter the same value you set for VIO_TCP_DOWNLOAD_PORT on the server."
+            echo "  The client's raw socket uses it to recognise tunnel packets."
             ask_optional VIO_SRV_PORT \
-                "Server's VIO_TCP_DOWNLOAD_PORT value (source port to filter on)" "0"
+                "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "0"
         fi
     fi
 
