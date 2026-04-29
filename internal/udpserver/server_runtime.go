@@ -303,7 +303,9 @@ func (s *Server) runUDPSender(ctx context.Context) {
 
 func (s *Server) drainUDPSendQueues() {
 	conn := s.udpDownloadConn
-	if conn == nil {
+	// Allow VioTCP-only mode: proceed even when udpDownloadConn is nil, as long
+	// as a violated TCP sender is available to carry the traffic.
+	if conn == nil && s.vioTCPSender == nil {
 		return
 	}
 
