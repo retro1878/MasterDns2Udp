@@ -236,10 +236,11 @@ echo "  1) Server      (runs on the abroad/free-internet side — receives DNS t
 echo "  2) Client      (runs in Iran — provides local SOCKS5 proxy)"
 echo "  3) Update      (re-download binaries for an existing installation)"
 echo "  4) Reconfigure (change download channel mode for an existing installation)"
+echo "  5) Uninstall   (stop services, remove binaries and config)"
 echo
 MODE=""
-while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" && $MODE != "4" ]]; do
-    read -rp "${_PB}Choose [1/2/3/4]: ${_PN}" MODE || MODE=""
+while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" && $MODE != "4" && $MODE != "5" ]]; do
+    read -rp "${_PB}Choose [1/2/3/4/5]: ${_PN}" MODE || MODE=""
 done
 
 mkdir -p "$INSTALL_DIR"
@@ -322,6 +323,106 @@ if [[ $MODE == "3" ]]; then
     echo
     echo -e "  Check status : ${CYAN}systemctl status masterdns2udp-server${NC}"
     echo -e "               : ${CYAN}systemctl status masterdns2udp-client${NC}"
+    echo
+    exit 0
+fi
+
+# =============================================================================
+# UNINSTALL
+# =============================================================================
+if [[ $MODE == "5" ]]; then
+    banner "Uninstall"
+
+    # Discover what is actually installed
+    UNINST_ROLES=()
+    [[ -f "${INSTALL_DIR}/server.toml" || -x "${INSTALL_DIR}/masterdns2udp-server" ]] \
+        && UNINST_ROLES+=("server")
+    [[ -f "${INSTALL_DIR}/client.toml" || -x "${INSTALL_DIR}/masterdns2udp-client" ]] \
+        && UNINST_ROLES+=("client")
+
+    if [[ ${#UNINST_ROLES[@]} -eq 0 ]]; then
+        die "Nothing found in ${INSTALL_DIR} — already uninstalled?"
+    fi
+
+    echo "  The following will be removed:"
+    for role in "${UNINST_ROLES[@]}"; do
+        echo -e "    ${YELLOW}•${NC} service  : masterdns2udp-${role}"
+        echo -e "    ${YELLOW}•${NC} binary   : ${INSTALL_DIR}/masterdns2udp-${role}"
+        echo -e "    ${YELLOW}•${NC} config   : ${INSTALL_DIR}/${role}.toml"
+        [[ $role == "server" ]] && \
+            echo -e "    ${YELLOW}•${NC} key file : ${INSTALL_DIR}/encrypt_key.txt"
+        [[ $role == "client" ]] && \
+            echo -e "    ${YELLOW}•${NC} resolvers: ${INSTALL_DIR}/client_resolvers.txt"
+    done
+    echo -e "    ${YELLOW}•${NC} systemd unit file(s) from /etc/systemd/system/"
+    echo
+    warn "This cannot be undone."
+    ask_yn "  Proceed with uninstall?" N || exit 1
+
+    for role in "${UNINST_ROLES[@]}"; do
+        unit="masterdns2udp-${role}"
+        banner "Removing ${role}"
+
+        # Stop and disable the service
+        if systemctl is-active --quiet "$unit" 2>/dev/null; then
+            info "Stopping ${unit}..."
+            systemctl stop "$unit" || warn "Could not stop ${unit} — continuing"
+        fi
+        if systemctl is-enabled --quiet "$unit" 2>/dev/null; then
+            systemctl disable "$unit" || warn "Could not disable ${unit} — continuing"
+        fi
+
+        # Remove systemd unit file
+        local_unit="/etc/systemd/system/${unit}.service"
+        if [[ -f $local_unit ]]; then
+            rm -f "$local_unit"
+            ok "Removed ${local_unit}"
+        fi
+
+        # Remove binary
+        dest="${INSTALL_DIR}/${unit}"
+        if [[ -f $dest ]]; then
+            rm -f "$dest"
+            ok "Removed ${dest}"
+        fi
+
+        # Remove config
+        cfg="${INSTALL_DIR}/${role}.toml"
+        if [[ -f $cfg ]]; then
+            rm -f "$cfg"
+            ok "Removed ${cfg}"
+        fi
+
+        # Remove role-specific files
+        if [[ $role == "server" && -f "${INSTALL_DIR}/encrypt_key.txt" ]]; then
+            rm -f "${INSTALL_DIR}/encrypt_key.txt"
+            ok "Removed ${INSTALL_DIR}/encrypt_key.txt"
+        fi
+        if [[ $role == "client" && -f "${INSTALL_DIR}/client_resolvers.txt" ]]; then
+            rm -f "${INSTALL_DIR}/client_resolvers.txt"
+            ok "Removed ${INSTALL_DIR}/client_resolvers.txt"
+        fi
+    done
+
+    systemctl daemon-reload || true
+
+    # Remove the install directory if it is now empty
+    if [[ -d $INSTALL_DIR ]]; then
+        remaining=$(find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 | wc -l)
+        if [[ $remaining -eq 0 ]]; then
+            rmdir "$INSTALL_DIR"
+            ok "Removed empty directory ${INSTALL_DIR}"
+        else
+            info "${INSTALL_DIR} still contains files — not removed:"
+            find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 | while read -r f; do
+                echo "    $f"
+            done
+        fi
+    fi
+
+    banner "Done"
+    echo
+    ok "Uninstall complete"
     echo
     exit 0
 fi
