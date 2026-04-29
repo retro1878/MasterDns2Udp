@@ -86,6 +86,31 @@ require_root() {
     [[ $EUID -eq 0 ]] || die "This installer must be run as root (sudo $0)."
 }
 
+# Collect a list of IP:PORT entries into array __list_var.
+# Accepts: one per line, or comma/semicolon-separated on one line, or mixed.
+collect_ip_port_list() {
+    local __list_var=$1 __prompt=$2
+    local -n __list=$__list_var
+    __list=()
+    echo "  Enter IP:PORT entries — one per line or comma/semicolon-separated."
+    while true; do
+        read -rp "${_PB}  ${__prompt} (blank to finish): ${_PN}" __raw || __raw=""
+        [[ -z $__raw ]] && break
+        # split on commas and semicolons
+        IFS=',;' read -ra __tokens <<< "$__raw"
+        for __tok in "${__tokens[@]}"; do
+            __tok="${__tok#"${__tok%%[![:space:]]*}"}"   # trim leading spaces
+            __tok="${__tok%"${__tok##*[![:space:]]}"}"   # trim trailing spaces
+            [[ -z $__tok ]] && continue
+            if [[ $__tok =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+                __list+=("$__tok"); ok "  Added: $__tok"
+            else
+                warn "  Skipped invalid entry '${__tok}' — expected IP:PORT"
+            fi
+        done
+    done
+}
+
 check_arch() {
     local arch; arch=$(uname -m)
     [[ $arch == x86_64 ]] || die "Only x86_64 (amd64) is supported. Detected: $arch"
@@ -655,19 +680,9 @@ else
 
     banner "DNS resolvers"
     echo "  Iranian public DNS resolvers the client sends tunnel queries through."
-    echo "  Format: IP:PORT  (one per line; blank line to finish)"
     echo "  Example: 178.22.122.100:53"
     echo
-    RESOLVERS=()
-    while true; do
-        read -rp "${_PB}  Resolver (blank to finish): ${_PN}" R || R=""
-        [[ -z $R ]] && break
-        if [[ $R =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
-            RESOLVERS+=("$R"); ok "  Added: $R"
-        else
-            warn "  Invalid format — use IP:PORT (e.g. 178.22.122.100:53)"
-        fi
-    done
+    collect_ip_port_list RESOLVERS "Resolver"
     if [[ ${#RESOLVERS[@]} -eq 0 ]]; then
         warn "No resolvers entered. Edit ${INSTALL_DIR}/client_resolvers.txt before starting."
         RESOLVERS=("0.0.0.0:53  # REPLACE with a real Iranian resolver")
@@ -689,17 +704,7 @@ else
         ask_optional UL_PORT \
             "UDP upload port on the server (must match server UDP_UPLOAD_PORT, 0=skip)" "0"
         if [[ $UL_PORT != "0" ]]; then
-            echo "  Enter each local SOCKS5 proxy (IP:PORT; blank to finish)."
-            SOCKS5_LIST=()
-            while true; do
-                read -rp "${_PB}  Proxy (blank to finish): ${_PN}" P || P=""
-                [[ -z $P ]] && break
-                if [[ $P =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
-                    SOCKS5_LIST+=("$P"); ok "  Added: $P"
-                else
-                    warn "  Invalid format — use IP:PORT (e.g. 127.0.0.1:13000)"
-                fi
-            done
+            collect_ip_port_list SOCKS5_LIST "Proxy"
             if [[ ${#SOCKS5_LIST[@]} -gt 0 ]]; then
                 SOCKS5_PROXIES_TOML="["
                 for p in "${SOCKS5_LIST[@]}"; do SOCKS5_PROXIES_TOML+="\"${p}\", "; done
