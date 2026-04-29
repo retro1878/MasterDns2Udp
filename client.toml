@@ -22,7 +22,7 @@ LISTEN_PORT   = 18000
 
 # ── Server Identity ───────────────────────────────────────────────────────────
 #
-# The Iran server's public IPv4. Used in two places:
+# The abroad server's public IPv4. Used in two places:
 #   • Violated TCP download: raw socket filters inbound packets by this IP.
 #   • SOCKS5 upload: packets are addressed to this IP via the proxy.
 # Required when either VIO_TCP_DOWNLOAD_PORT or UPLOAD_SOCKS5_PROXIES is set.
@@ -36,11 +36,11 @@ SERVER_IP = ""   # e.g. "203.0.113.10"
 #  Mode A — Raw UDP  (default)
 #    ► Set UDP_DOWNLOAD_IP to this machine's public IPv4.
 #      Set UDP_DOWNLOAD_PORT to match server's UDP_DOWNLOAD_PORT (e.g. 5555).
-#      Open this port in your firewall (inbound UDP from the Iran server).
+#      Open this port in your firewall (inbound UDP from the abroad server).
 #      Leave VIO_TCP_DOWNLOAD_PORT = 0.
 #
 #  Mode B — Violated TCP  (when UDP is blocked)
-#    ► Set SERVER_IP above to the Iran server's public IP.
+#    ► Set SERVER_IP above to the abroad server's public IP.
 #      Set VIO_TCP_SERVER_PORT to match server's VIO_TCP_DOWNLOAD_PORT (e.g. 45000).
 #      Set VIO_TCP_DOWNLOAD_PORT to a port on THIS machine (e.g. 45001).
 #        • The port must be CLOSED (no service listening on it) — the kernel
@@ -53,7 +53,7 @@ SERVER_IP = ""   # e.g. "203.0.113.10"
 #    ► Configure all fields for both Mode A and Mode B.
 #      ARQ deduplicates packets that arrive via both paths simultaneously.
 
-# Your public IPv4 that the Iran server can reach for UDP download.
+# Your public IPv4 that the abroad server can reach for UDP download.
 # Leave empty to disable UDP download.
 UDP_DOWNLOAD_IP   = "YOUR_CLIENT_PUBLIC_IP"   # e.g. "203.0.113.42"
 UDP_DOWNLOAD_PORT = 5555
@@ -62,7 +62,7 @@ UDP_DOWNLOAD_PORT = 5555
 # 0 = disabled. SERVER_IP and VIO_TCP_SERVER_PORT must be set if non-zero.
 VIO_TCP_DOWNLOAD_PORT = 0   # e.g. 45001
 
-# Iran server's TCP source port (the server's VIO_TCP_DOWNLOAD_PORT value).
+# Abroad server's TCP source port (the server's VIO_TCP_DOWNLOAD_PORT value).
 # Used to filter inbound raw socket packets. Must match server's VIO_TCP_DOWNLOAD_PORT.
 VIO_TCP_SERVER_PORT = 0     # e.g. 45000
 
@@ -73,7 +73,7 @@ VIO_TCP_SERVER_PORT = 0     # e.g. 45000
 # Useful with ArvanCloud CDN reverse tunnels or similar intermediaries.
 # SERVER_IP (above) and UDP_UPLOAD_PORT must both be set to enable this.
 
-# UDP port on the Iran server that receives SOCKS5-proxied upload packets.
+# UDP port on the abroad server that receives SOCKS5-proxied upload packets.
 # Must match server's UDP_UPLOAD_PORT. 0 = disabled.
 UDP_UPLOAD_PORT = 0   # e.g. 5556
 
@@ -87,7 +87,7 @@ UPLOAD_SOCKS5_PROXIES = []
 # client_resolvers.txt (one entry per line).
 # Format:   IP:PORT
 #           IP:PORT  domain.example.com   (domain-locked resolver)
-# Use Iranian public resolvers or the Iran server's own IP on port 53.
+# Use Iranian public resolvers or the abroad server's own IP on port 53.
 # Example:  178.22.122.100:53
 #           YOUR_IRAN_SERVER_IP:53   tunnel.example.com
 
