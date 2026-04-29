@@ -6,7 +6,7 @@
 # =============================================================================
 set -euo pipefail
 
-# ── Colours ──────────────────────────────────────────────────────────────────
+# ── Colours ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 
@@ -22,15 +22,12 @@ INSTALL_DIR="/opt/masterdns2udp"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
 
 # ── Ensure interactive prompts work even when piped via: curl ... | bash ──────
-# When stdin is not a terminal (pipe), reopen it from /dev/tty so that read
-# commands receive keyboard input instead of leftover pipe data.
 if [[ ! -t 0 ]]; then
     exec < /dev/tty || die "Cannot open /dev/tty for interactive input. Download the script and run it directly: bash install.sh"
 fi
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 ask() {
-    # ask <variable> <prompt> [default]
     local __var=$1 __prompt=$2 __default=${3:-}
     local __hint=""
     [[ -n $__default ]] && __hint=" [${__default}]"
@@ -54,7 +51,6 @@ ask_optional() {
 }
 
 ask_yn() {
-    # ask_yn <prompt> [Y|N]  → returns 0 for yes, 1 for no
     local __prompt=$1 __default=${2:-Y}
     while true; do
         local __hint="Y/n"; [[ $__default == N ]] && __hint="y/N"
@@ -81,7 +77,6 @@ generate_key() {
     if command -v openssl &>/dev/null; then
         openssl rand -base64 32
     else
-        # Fallback: 32 bytes (256 bits) of urandom, same entropy as openssl rand 32
         dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n'
     fi
 }
@@ -104,8 +99,6 @@ download_binary() {
 
 ensure_binary() {
     local name=$1 dest="${INSTALL_DIR}/${1}"
-
-    # Already installed?
     if [[ -x $dest ]]; then
         if ask_yn "  ${name} already exists in ${INSTALL_DIR}. Re-download?" N; then
             download_binary "$name" "$dest"
@@ -114,16 +107,12 @@ ensure_binary() {
         fi
         return
     fi
-
-    # Sitting next to the script?
     if [[ -x "${SCRIPT_DIR}/${name}" ]]; then
         cp "${SCRIPT_DIR}/${name}" "$dest"
         chmod +x "$dest"
         ok "Copied ${name} from script directory"
         return
     fi
-
-    # Download it
     download_binary "$name" "$dest"
 }
 
@@ -153,7 +142,7 @@ write_systemd_service() {
     local unit=$1 desc=$2 binary=$3 config=$4 extra_after=${5:-}
     local after="network.target"
     [[ -n $extra_after ]] && after="${after} ${extra_after}"
-    cat > "/etc/systemd/system/${unit}.service" <<EOF
+    cat > "/etc/systemd/system/${unit}.service" <<SVCEOF
 [Unit]
 Description=${desc}
 After=${after}
@@ -168,7 +157,7 @@ LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SVCEOF
     systemctl daemon-reload \
         || warn "systemctl daemon-reload failed — service file may not be loaded"
     ok "Created /etc/systemd/system/${unit}.service"
@@ -199,7 +188,6 @@ echo
 require_root
 check_arch
 
-# ── Mode selection ────────────────────────────────────────────────────────────
 banner "Installation type"
 echo "  1) Server  (runs on the Iran server — receives DNS tunnel traffic)"
 echo "  2) Client  (runs on the outside server — local SOCKS5 proxy)"
@@ -210,15 +198,13 @@ while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" ]]; do
     read -rp "$(echo -e "${BOLD}Choose [1/2/3]: ${NC}")" MODE || MODE=""
 done
 
-# ── Prepare install directory ─────────────────────────────────────────────────
 mkdir -p "$INSTALL_DIR"
 
 # =============================================================================
-# UPDATE (re-download binaries for whichever roles are already installed)
+# UPDATE
 # =============================================================================
 if [[ $MODE == "3" ]]; then
     banner "Updating binaries"
-
     found=0
     for binary in masterdns2udp-server masterdns2udp-client; do
         dest="${INSTALL_DIR}/${binary}"
@@ -226,7 +212,6 @@ if [[ $MODE == "3" ]]; then
         if [[ -x "$dest" ]]; then
             download_binary "$binary" "$dest"
             found=1
-
             if systemctl is-active --quiet "$unit" 2>/dev/null; then
                 systemctl restart "$unit" \
                     && ok "Service ${unit} restarted" \
@@ -241,13 +226,11 @@ if [[ $MODE == "3" ]]; then
             info "${binary} not found in ${INSTALL_DIR} — skipping"
         fi
     done
-
     if [[ $found -eq 0 ]]; then
         warn "No existing binaries found in ${INSTALL_DIR}."
         warn "Run option 1 (server) or 2 (client) to do a fresh install first."
         exit 1
     fi
-
     banner "Done"
     echo
     ok "Binaries updated in ${INSTALL_DIR}"
@@ -268,57 +251,68 @@ ok "Installing as: ${ROLE}"
 if [[ $ROLE == "server" ]]; then
 
     banner "Server configuration"
+    ask          DOMAIN      "Tunnel domain (e.g. vpn.example.com)"
+    ask_optional DNS_PORT    "DNS listen port (UDP_PORT)"        "53"
+    ask_optional UPSTREAM    "DNS upstream servers (comma-sep)"  "8.8.8.8:53,1.1.1.1:53"
+    ask_optional LOG_LEVEL   "Log level (DEBUG/INFO/WARN/ERROR)" "INFO"
 
-    ask         DOMAIN          "Tunnel domain (e.g. vpn.example.com)"
-    ask_optional DNS_PORT       "DNS listen port (UDP_PORT)"              "53"
-    ask_optional DL_PORT        "UDP download port (UDP_DOWNLOAD_PORT)"   "5555"
-    ask_optional UL_PORT        "UDP upload port for SOCKS5 paths (0=off)" "0"
-    ask_optional UPSTREAM       "DNS upstream servers (comma-separated)"  "8.8.8.8:53,1.1.1.1:53"
-    ask_optional LOG_LEVEL      "Log level (DEBUG/INFO/WARN/ERROR)"       "INFO"
+    banner "Download channel"
+    echo "  Mode A — Raw UDP      : plain UDP datagrams to the client's public IP."
+    echo "  Mode B — Violated TCP : DPI-evading TCP segments (for Irancell IP ranges)."
+    echo "                          Requires root/CAP_NET_RAW. No firewall rule needed."
+    echo "  Mode C — Both         : parallel paths; client ARQ deduplicates."
+    echo "  Set a port to 0 to disable that mode."
+    echo
+    ask_optional UDP_DL_PORT  "UDP download port     (Mode A, 0=off)" "5555"
+    ask_optional VIO_DL_PORT  "VioTCP download port  (Mode B, 0=off)" "0"
+    VIO_SRC_IP=""
+    if [[ $VIO_DL_PORT != "0" ]]; then
+        ask_optional VIO_SRC_IP \
+            "Server public IPv4 for VioTCP packet headers (blank = auto-detect)" ""
+    fi
+    ask_optional UL_PORT "SOCKS5 upload receive port (0=off)" "0"
 
-    # Encryption key
     banner "Encryption key"
-    echo "  You can generate a new key now, or paste an existing one."
-    echo "  If you already have a key (from a previous install), paste it."
-    echo "  Otherwise press Enter to generate a fresh key."
+    echo "  Press Enter to generate a fresh key, or paste an existing one."
     echo
     read -rp "$(echo -e "${BOLD}Paste existing key (or Enter to generate): ${NC}")" ENC_KEY || ENC_KEY=""
     if [[ -z $ENC_KEY ]]; then
         ENC_KEY=$(generate_key)
         echo
-        echo -e "${BOLD}${YELLOW}Generated encryption key (copy this to your client config):${NC}"
+        echo -e "${BOLD}${YELLOW}Generated key — copy this to the client installer:${NC}"
         echo -e "${GREEN}${ENC_KEY}${NC}"
         echo
-        warn "Save this key — you will need to paste it into the client installer."
+        warn "Save this key now."
         read -rp "Press Enter to continue..." || true
     fi
-
-    # Write key file
     printf '%s\n' "$ENC_KEY" > "${INSTALL_DIR}/encrypt_key.txt"
     chmod 600 "${INSTALL_DIR}/encrypt_key.txt"
     ok "encrypt_key.txt written"
 
-    # Build upstream DNS list for TOML
+    # Build upstream TOML array
     UPSTREAM_TOML="["
     IFS=',' read -ra US_ARRAY <<< "$UPSTREAM"
     for s in "${US_ARRAY[@]}"; do
-        s="${s#"${s%%[![:space:]]*}"}"  # trim leading spaces
-        s="${s%"${s##*[![:space:]]}"}"  # trim trailing spaces
+        s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"
         UPSTREAM_TOML+="\"${s}\", "
     done
     UPSTREAM_TOML="${UPSTREAM_TOML%, }]"
 
-    # Write server.toml
     CONFIG_PATH="${INSTALL_DIR}/server.toml"
-    cat > "$CONFIG_PATH" <<EOF
+    cat > "$CONFIG_PATH" <<CFGEOF
 # MasterDns2Udp — Server Config (generated by installer)
 
-UDP_HOST          = "0.0.0.0"
-UDP_PORT          = ${DNS_PORT}
-UDP_DOWNLOAD_PORT = ${DL_PORT}
-UDP_UPLOAD_PORT   = ${UL_PORT}
+UDP_HOST = "0.0.0.0"
+UDP_PORT = ${DNS_PORT}
 
-DOMAIN = ["${DOMAIN}"]
+# Download channel  (Mode A=UDP, Mode B=VioTCP, Mode C=both; 0=disabled)
+UDP_DOWNLOAD_PORT     = ${UDP_DL_PORT}
+VIO_TCP_DOWNLOAD_PORT = ${VIO_DL_PORT}
+VIO_TCP_SOURCE_IP     = "${VIO_SRC_IP}"
+
+UDP_UPLOAD_PORT = ${UL_PORT}
+
+DOMAIN               = ["${DOMAIN}"]
 MIN_VPN_LABEL_LENGTH = 3
 
 DATA_ENCRYPTION_METHOD = 1
@@ -327,7 +321,7 @@ ENCRYPTION_KEY_FILE    = "${INSTALL_DIR}/encrypt_key.txt"
 DNS_UPSTREAM_SERVERS = ${UPSTREAM_TOML}
 DNS_UPSTREAM_TIMEOUT = 4.0
 
-PROTOCOL_TYPE = "SOCKS5"
+PROTOCOL_TYPE       = "SOCKS5"
 USE_EXTERNAL_SOCKS5 = false
 SOCKS5_AUTH         = false
 
@@ -340,43 +334,38 @@ ARQ_INITIAL_RTO_SECONDS = 1.0
 ARQ_MAX_RTO_SECONDS     = 5.0
 
 LOG_LEVEL = "${LOG_LEVEL}"
-EOF
+CFGEOF
     ok "server.toml written → ${CONFIG_PATH}"
 
-    # Binary
     banner "Binary"
     ensure_binary "masterdns2udp-server"
 
-    # Firewall
     banner "Firewall"
-    if ask_yn "  Open UDP ports ${DNS_PORT} and ${DL_PORT} in firewall (ufw/firewalld)?"; then
-        open_port "$DNS_PORT" udp
-        open_port "$DL_PORT"  udp
-        if [[ $UL_PORT != "0" ]]; then
-            open_port "$UL_PORT" udp
-        fi
+    PORTS_TO_OPEN=("$DNS_PORT")
+    [[ $UDP_DL_PORT != "0" ]] && PORTS_TO_OPEN+=("$UDP_DL_PORT")
+    [[ $UL_PORT     != "0" ]] && PORTS_TO_OPEN+=("$UL_PORT")
+    PORTS_STR=$(IFS=', '; echo "${PORTS_TO_OPEN[*]}")
+    if ask_yn "  Open UDP port(s) ${PORTS_STR} in firewall (ufw/firewalld)?"; then
+        for p in "${PORTS_TO_OPEN[@]}"; do open_port "$p" udp; done
+    fi
+    if [[ $VIO_DL_PORT != "0" ]]; then
+        info "VioTCP: server sends OUT on port ${VIO_DL_PORT} — no inbound firewall rule needed."
     fi
 
-    # Systemd
     banner "Systemd service"
     write_systemd_service \
-        "masterdns2udp-server" \
-        "MasterDns2Udp Server" \
-        "${INSTALL_DIR}/masterdns2udp-server" \
-        "$CONFIG_PATH"
+        "masterdns2udp-server" "MasterDns2Udp Server" \
+        "${INSTALL_DIR}/masterdns2udp-server" "$CONFIG_PATH"
     enable_and_start "masterdns2udp-server"
 
-    # Summary
     banner "Done"
     echo
     ok "Server installed in ${INSTALL_DIR}"
     echo
-    echo -e "  ${BOLD}Your encryption key (paste into client installer):${NC}"
+    echo -e "  ${BOLD}Encryption key (paste into client installer):${NC}"
     echo -e "  ${GREEN}$(cat "${INSTALL_DIR}/encrypt_key.txt")${NC}"
     echo
-    echo -e "  ${BOLD}Reminder:${NC} set the NS record for ${CYAN}${DOMAIN}${NC}"
-    echo -e "  to point to this server's public IP so DNS resolvers"
-    echo -e "  forward tunnel queries here."
+    echo -e "  ${BOLD}Reminder:${NC} point the NS record for ${CYAN}${DOMAIN}${NC} to this server's IP."
     echo
     echo -e "  Check status : ${CYAN}systemctl status masterdns2udp-server${NC}"
     echo -e "  View logs    : ${CYAN}journalctl -u masterdns2udp-server -f${NC}"
@@ -388,16 +377,51 @@ EOF
 else
 
     banner "Client configuration"
+    ask          DOMAIN       "Tunnel domain (must match server)"
+    ask_optional LISTEN_PORT  "Local SOCKS5 listen port"               "18000"
+    ask_optional LOG_LEVEL    "Log level (DEBUG/INFO/WARN/ERROR)"       "INFO"
 
-    ask         DOMAIN       "Tunnel domain (must match server, e.g. vpn.example.com)"
-    ask         CLIENT_IP    "This machine's public IPv4 (server will send downloads here)"
-    ask_optional DL_PORT     "UDP download port (must match server UDP_DOWNLOAD_PORT)"   "5555"
-    ask_optional LISTEN_PORT "Local SOCKS5 listen port"                                  "18000"
-    ask_optional LOG_LEVEL   "Log level (DEBUG/INFO/WARN/ERROR)"                         "INFO"
+    banner "Iran server identity"
+    echo "  The server's public IPv4 is required for:"
+    echo "    • Violated TCP download — raw socket filters inbound packets by source IP"
+    echo "    • SOCKS5 upload paths   — upload packets are addressed to this IP"
+    echo "  Leave blank if using Mode A (UDP download) only."
+    echo
+    ask_optional SERVER_IP "Iran server public IPv4 (blank = UDP-only)" ""
 
-    # Encryption key
+    banner "Download channel"
+    echo "  Mode A — Raw UDP      : server sends plain UDP to your public IP."
+    echo "  Mode B — Violated TCP : DPI-evading segments (requires SERVER_IP above)."
+    echo "  Mode C — Both         : parallel paths; ARQ deduplicates."
+    echo "  Set a port to 0 (or leave IP blank) to disable that mode."
+    echo
+
+    echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
+    ask_optional UDP_DL_IP "Your public IPv4 for UDP download (blank = disable Mode A)" ""
+    UDP_DL_PORT="0"
+    if [[ -n $UDP_DL_IP ]]; then
+        ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT)" "5555"
+    fi
+
+    echo
+    echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
+    VIO_DL_PORT="0"
+    VIO_SRV_PORT="0"
+    if [[ -z $SERVER_IP ]]; then
+        info "Skipping VioTCP — SERVER_IP not set."
+    else
+        echo "  Choose any closed port on THIS machine (nothing must listen on it)."
+        echo "  Do NOT open it in the firewall — the kernel RST is harmless and expected."
+        ask_optional VIO_DL_PORT \
+            "Closed port on this machine for VioTCP (0 = disable Mode B)" "0"
+        if [[ $VIO_DL_PORT != "0" ]]; then
+            ask_optional VIO_SRV_PORT \
+                "Server's VIO_TCP_DOWNLOAD_PORT value (source port to filter on)" "0"
+        fi
+    fi
+
     banner "Encryption key"
-    echo "  Paste the encryption key shown at the end of the server installer."
+    echo "  Paste the key shown at the end of the server installer."
     echo
     ENC_KEY=""
     while [[ -z $ENC_KEY ]]; do
@@ -405,84 +429,78 @@ else
         [[ -z $ENC_KEY ]] && warn "Key is required."
     done
 
-    # Resolvers
     banner "DNS resolvers"
-    echo "  Enter the Iranian public DNS resolvers the client will send"
-    echo "  tunnel queries through (one per line, format IP:PORT)."
-    echo "  Press Enter on a blank line when done."
-    echo "  Example:  178.22.122.100:53"
+    echo "  Iranian public DNS resolvers the client sends tunnel queries through."
+    echo "  Format: IP:PORT  (one per line; blank line to finish)"
+    echo "  Example: 178.22.122.100:53"
     echo
     RESOLVERS=()
     while true; do
         read -rp "$(echo -e "${BOLD}  Resolver (blank to finish): ${NC}")" R || R=""
         [[ -z $R ]] && break
         if [[ $R =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
-            RESOLVERS+=("$R")
-            ok "  Added: $R"
+            RESOLVERS+=("$R"); ok "  Added: $R"
         else
             warn "  Invalid format — use IP:PORT (e.g. 178.22.122.100:53)"
         fi
     done
-
     if [[ ${#RESOLVERS[@]} -eq 0 ]]; then
-        warn "No resolvers entered. Adding placeholder — edit ${INSTALL_DIR}/client_resolvers.txt before starting."
+        warn "No resolvers entered. Edit ${INSTALL_DIR}/client_resolvers.txt before starting."
         RESOLVERS=("0.0.0.0:53  # REPLACE with a real Iranian resolver")
     fi
-
-    # Write client_resolvers.txt
     RESOLVERS_PATH="${INSTALL_DIR}/client_resolvers.txt"
     printf '%s\n' "${RESOLVERS[@]}" > "$RESOLVERS_PATH"
     ok "client_resolvers.txt written → ${RESOLVERS_PATH}"
 
-    # Optional SOCKS5 upload section
     banner "SOCKS5 upload paths (optional)"
-    echo "  If you have local SOCKS5 proxies (e.g. ArvanCloud reverse tunnels)"
-    echo "  that provide an independent path to the server, you can use them"
-    echo "  as parallel upload channels alongside the DNS path."
-    echo "  Leave SERVER_IP blank to skip this feature."
+    echo "  Mirror upload packets through local SOCKS5 proxies (e.g. ArvanCloud reverse"
+    echo "  tunnels) as an extra upload path alongside the DNS channel."
+    echo "  Each proxy must support UDP ASSOCIATE. Requires SERVER_IP to be set."
     echo
-    ask_optional SERVER_IP   "Server public IPv4 (leave blank to skip SOCKS5 upload)" ""
     SOCKS5_PROXIES_TOML="[]"
     UL_PORT="0"
-    if [[ -n $SERVER_IP ]]; then
-        ask_optional UL_PORT "UDP upload port (must match server UDP_UPLOAD_PORT)" "5556"
-        echo "  Enter each local SOCKS5 proxy address (IP:PORT)."
-        echo "  Press Enter on a blank line when done."
-        SOCKS5_LIST=()
-        while true; do
-            read -rp "$(echo -e "${BOLD}  Proxy (blank to finish): ${NC}")" P || P=""
-            [[ -z $P ]] && break
-            if [[ $P =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
-                SOCKS5_LIST+=("$P")
-                ok "  Added: $P"
-            else
-                warn "  Invalid format — use IP:PORT (e.g. 127.0.0.1:13000)"
-            fi
-        done
-        if [[ ${#SOCKS5_LIST[@]} -gt 0 ]]; then
-            SOCKS5_PROXIES_TOML="["
-            for p in "${SOCKS5_LIST[@]}"; do
-                SOCKS5_PROXIES_TOML+="\"${p}\", "
+    if [[ -z $SERVER_IP ]]; then
+        info "Skipping — SERVER_IP not set."
+    else
+        ask_optional UL_PORT \
+            "UDP upload port on the server (must match server UDP_UPLOAD_PORT, 0=skip)" "0"
+        if [[ $UL_PORT != "0" ]]; then
+            echo "  Enter each local SOCKS5 proxy (IP:PORT; blank to finish)."
+            SOCKS5_LIST=()
+            while true; do
+                read -rp "$(echo -e "${BOLD}  Proxy (blank to finish): ${NC}")" P || P=""
+                [[ -z $P ]] && break
+                if [[ $P =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+                    SOCKS5_LIST+=("$P"); ok "  Added: $P"
+                else
+                    warn "  Invalid format — use IP:PORT (e.g. 127.0.0.1:13000)"
+                fi
             done
-            SOCKS5_PROXIES_TOML="${SOCKS5_PROXIES_TOML%, }]"
+            if [[ ${#SOCKS5_LIST[@]} -gt 0 ]]; then
+                SOCKS5_PROXIES_TOML="["
+                for p in "${SOCKS5_LIST[@]}"; do SOCKS5_PROXIES_TOML+="\"${p}\", "; done
+                SOCKS5_PROXIES_TOML="${SOCKS5_PROXIES_TOML%, }]"
+            fi
         fi
     fi
 
-    # Write client.toml
     CONFIG_PATH="${INSTALL_DIR}/client.toml"
-    cat > "$CONFIG_PATH" <<EOF
+    cat > "$CONFIG_PATH" <<CFGEOF
 # MasterDns2Udp — Client Config (generated by installer)
 
 PROTOCOL_TYPE = "SOCKS5"
+LISTEN_IP     = "127.0.0.1"
+LISTEN_PORT   = ${LISTEN_PORT}
 
-LISTEN_IP   = "127.0.0.1"
-LISTEN_PORT = ${LISTEN_PORT}
+SERVER_IP = "${SERVER_IP}"
 
-UDP_DOWNLOAD_IP   = "${CLIENT_IP}"
-UDP_DOWNLOAD_PORT = ${DL_PORT}
+# Download channel  (Mode A=UDP, Mode B=VioTCP, Mode C=both; 0=disabled)
+UDP_DOWNLOAD_IP       = "${UDP_DL_IP}"
+UDP_DOWNLOAD_PORT     = ${UDP_DL_PORT}
+VIO_TCP_DOWNLOAD_PORT = ${VIO_DL_PORT}
+VIO_TCP_SERVER_PORT   = ${VIO_SRV_PORT}
 
-SERVER_IP           = "${SERVER_IP}"
-UDP_UPLOAD_PORT     = ${UL_PORT}
+UDP_UPLOAD_PORT       = ${UL_PORT}
 UPLOAD_SOCKS5_PROXIES = ${SOCKS5_PROXIES_TOML}
 
 DOMAINS = ["${DOMAIN}"]
@@ -511,38 +529,39 @@ PING_AGGRESSIVE_INTERVAL_SECONDS = 0.1
 PING_LAZY_INTERVAL_SECONDS       = 0.75
 
 LOG_LEVEL = "${LOG_LEVEL}"
-EOF
+CFGEOF
     ok "client.toml written → ${CONFIG_PATH}"
 
-    # Binary
     banner "Binary"
     ensure_binary "masterdns2udp-client"
 
-    # Firewall
     banner "Firewall"
-    if ask_yn "  Open UDP port ${DL_PORT} in firewall (ufw/firewalld)?"; then
-        open_port "$DL_PORT" udp
+    if [[ -n $UDP_DL_IP && $UDP_DL_PORT != "0" ]]; then
+        if ask_yn "  Open UDP port ${UDP_DL_PORT} for UDP download (ufw/firewalld)?"; then
+            open_port "$UDP_DL_PORT" udp
+        fi
+    else
+        info "No UDP download port to open."
+    fi
+    if [[ $VIO_DL_PORT != "0" ]]; then
+        info "VioTCP: port ${VIO_DL_PORT} must stay CLOSED — do NOT open it in the firewall."
     fi
 
-    # Systemd
     banner "Systemd service"
     write_systemd_service \
-        "masterdns2udp-client" \
-        "MasterDns2Udp Client" \
-        "${INSTALL_DIR}/masterdns2udp-client" \
-        "$CONFIG_PATH"
+        "masterdns2udp-client" "MasterDns2Udp Client" \
+        "${INSTALL_DIR}/masterdns2udp-client" "$CONFIG_PATH"
     enable_and_start "masterdns2udp-client"
 
-    # Summary
     banner "Done"
     echo
     ok "Client installed in ${INSTALL_DIR}"
     echo
     echo -e "  ${BOLD}SOCKS5 proxy:${NC}  ${CYAN}127.0.0.1:${LISTEN_PORT}${NC}"
-    echo -e "  Point your browser / app at this address."
+    echo -e "  Point your browser or app at this address."
     echo
-    echo -e "  Check status : ${CYAN}systemctl status masterdns2udp-client${NC}"
-    echo -e "  View logs    : ${CYAN}journalctl -u masterdns2udp-client -f${NC}"
+    echo -e "  Check status  : ${CYAN}systemctl status masterdns2udp-client${NC}"
+    echo -e "  View logs     : ${CYAN}journalctl -u masterdns2udp-client -f${NC}"
     echo -e "  Edit resolvers: ${CYAN}${INSTALL_DIR}/client_resolvers.txt${NC}"
     echo
 fi
