@@ -289,9 +289,10 @@ if [[ $MODE == "4" ]]; then
 
     if [[ $RC == "server" ]]; then
         banner "Server download channel (current values shown as defaults)"
-        echo "  Mode A — Raw UDP  (0 = disabled)"
-        echo "  Mode B — VioTCP   (0 = disabled, requires root/CAP_NET_RAW)"
-        echo "  Mode C — Both"
+        echo "  Set a port to 0 to disable that mode, non-zero to enable it."
+        echo "  Mode A only : UDP non-zero, VioTCP = 0"
+        echo "  Mode B only : UDP = 0,      VioTCP non-zero"
+        echo "  Mode C both : UDP non-zero, VioTCP non-zero  (ARQ deduplicates)"
         echo
         cur_udp=$(cfg_get "UDP_DOWNLOAD_PORT" "5555")
         cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
@@ -320,9 +321,10 @@ if [[ $MODE == "4" ]]; then
 
     else  # client
         banner "Client download channel (current values shown as defaults)"
-        echo "  Mode A — Raw UDP  (0 = disabled)"
-        echo "  Mode B — VioTCP   (0 = disabled, requires SERVER_IP)"
-        echo "  Mode C — Both"
+        echo "  Set a field to 0/blank to disable that mode, non-zero/filled to enable it."
+        echo "  Mode A only : UDP IP + port set,  VioTCP port = 0"
+        echo "  Mode B only : UDP IP blank,        VioTCP port non-zero  (requires SERVER_IP)"
+        echo "  Mode C both : UDP IP + port set,  VioTCP port non-zero   (ARQ deduplicates)"
         echo
         cur_srv=$(cfg_get "SERVER_IP" "")
         cur_udp_ip=$(cfg_get "UDP_DOWNLOAD_IP" "")
@@ -411,11 +413,11 @@ if [[ $ROLE == "server" ]]; then
     ask_optional LOG_LEVEL   "Log level (DEBUG/INFO/WARN/ERROR)" "INFO"
 
     banner "Download channel"
-    echo "  Mode A — Raw UDP      : plain UDP datagrams to the client's public IP."
-    echo "  Mode B — Violated TCP : DPI-evading TCP segments (for Irancell IP ranges)."
-    echo "                          Requires root/CAP_NET_RAW. No firewall rule needed."
-    echo "  Mode C — Both         : parallel paths; client ARQ deduplicates."
-    echo "  Set a port to 0 to disable that mode."
+    echo "  Set a port to 0 to disable that mode, non-zero to enable it."
+    echo "  Mode A only : UDP non-zero, VioTCP = 0      (plain UDP to client's public IP)"
+    echo "  Mode B only : UDP = 0,      VioTCP non-zero  (DPI-evading TCP, Irancell ranges)"
+    echo "  Mode C both : UDP non-zero, VioTCP non-zero  (parallel; ARQ deduplicates)"
+    echo "  VioTCP requires root/CAP_NET_RAW; no extra firewall rule needed."
     echo
     ask_optional UDP_DL_PORT  "UDP download port     (Mode A, 0=off)" "5555"
     ask_optional VIO_DL_PORT  "VioTCP download port  (Mode B, 0=off)" "0"
@@ -544,10 +546,10 @@ else
     ask_optional SERVER_IP "Iran server public IPv4 (blank = UDP-only)" ""
 
     banner "Download channel"
-    echo "  Mode A — Raw UDP      : server sends plain UDP to your public IP."
-    echo "  Mode B — Violated TCP : DPI-evading segments (requires SERVER_IP above)."
-    echo "  Mode C — Both         : parallel paths; ARQ deduplicates."
-    echo "  Set a port to 0 (or leave IP blank) to disable that mode."
+    echo "  Set a field to 0/blank to disable that mode, non-zero/filled to enable it."
+    echo "  Mode A only : UDP IP + port set,  VioTCP port = 0"
+    echo "  Mode B only : UDP IP blank,        VioTCP port non-zero  (requires SERVER_IP)"
+    echo "  Mode C both : UDP IP + port set,  VioTCP port non-zero   (ARQ deduplicates)"
     echo
 
     echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
