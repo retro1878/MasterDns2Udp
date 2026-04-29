@@ -1,9 +1,9 @@
 # =============================================================================
 # MasterDns2Udp — Client Configuration
 # =============================================================================
-# This process runs OUTSIDE Iran (the "abroad" server).
+# This process runs on the IRAN side.
 # It exposes a local SOCKS5 proxy that apps connect to; traffic is tunneled
-# through DNS queries to the Iran server and returned via the download channel.
+# through DNS queries to the abroad server and returned via the download channel.
 #
 # QUICK START
 #   1. Set DOMAINS to match the server's DOMAIN.

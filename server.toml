@@ -1,9 +1,9 @@
 # =============================================================================
 # MasterDns2Udp — Server Configuration
 # =============================================================================
-# This process runs on the IRAN side.
-# Clients upload traffic as DNS queries directed here; the server pushes
-# downloads back over a separate channel.
+# This process runs on the ABROAD side (free internet — e.g. AWS, VPS outside Iran).
+# Clients in Iran upload traffic as DNS queries directed here; the server pushes
+# downloads back to the Iran-side client over a separate channel.
 #
 # QUICK START
 #   1. Point the NS record of your tunnel subdomain to this server's public IP.

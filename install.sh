@@ -207,8 +207,8 @@ require_root
 check_arch
 
 banner "Installation type"
-echo "  1) Server      (runs on the Iran server — receives DNS tunnel traffic)"
-echo "  2) Client      (runs on the outside server — local SOCKS5 proxy)"
+echo "  1) Server      (runs on the abroad/free-internet side — receives DNS tunnel traffic)"
+echo "  2) Client      (runs in Iran — provides local SOCKS5 proxy)"
 echo "  3) Update      (re-download binaries for an existing installation)"
 echo "  4) Reconfigure (change download channel mode for an existing installation)"
 echo
@@ -398,7 +398,7 @@ if [[ $MODE == "4" ]]; then
         cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
         cur_vio_srv=$(cfg_get "VIO_TCP_SERVER_PORT" "0")
 
-        ask_optional SERVER_IP "masterdns2udp-server IP — the Iran-side machine (blank = UDP-only)" "$cur_srv"
+        ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = UDP-only)" "$cur_srv"
         echo
         echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
         ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" "$cur_udp_ip"
@@ -603,13 +603,13 @@ else
     ask_optional LISTEN_PORT  "Local SOCKS5 listen port"               "18000"
     ask_optional LOG_LEVEL    "Log level (DEBUG/INFO/WARN/ERROR)"       "INFO"
 
-    banner "Tunnel server identity (the Iran-side machine)"
-    echo "  The masterdns2udp-server's public IPv4 is required for:"
+    banner "Tunnel server identity (abroad/free-internet machine)"
+    echo "  The abroad masterdns2udp-server's public IPv4 is required for:"
     echo "    • Violated TCP download — raw socket filters inbound packets by source IP"
     echo "    • SOCKS5 upload paths   — upload packets are addressed to this IP"
     echo "  Leave blank if using Mode A (UDP download) only."
     echo
-    ask_optional SERVER_IP "masterdns2udp-server IP — the Iran-side machine (blank = UDP-only)" ""
+    ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = UDP-only)" ""
 
     banner "Download channel"
     echo "  Set a field to 0/blank to disable that mode, non-zero/filled to enable it."
