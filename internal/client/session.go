@@ -358,8 +358,11 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 	copy(verifyCode[:], randomPart)
 
 	hasUDP := c.cfg.UDPDownloadIP != "" && c.cfg.UDPDownloadPort > 0
-	hasVioTCP := hasUDP && c.cfg.VioTCPDownloadPort > 0
+	hasVioTCP := c.cfg.VioTCPDownloadPort > 0 // independent of UDP
 
+	// Size selection: VioTCP payload reuses the bytes-10..15 UDP slot, leaving
+	// them zero when UDP is disabled. The server checks port > 0 before wiring
+	// up the UDP channel, so zero port = no UDP.
 	size := VpnProto.SessionInitBaseSize
 	switch {
 	case hasVioTCP:
@@ -385,6 +388,7 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 		copy(payload[10:14], ip)
 		binary.BigEndian.PutUint16(payload[14:16], uint16(c.cfg.UDPDownloadPort))
 	}
+	// bytes 10..15 remain zero if hasVioTCP && !hasUDP; server skips UDP when port == 0
 
 	if hasVioTCP {
 		binary.BigEndian.PutUint16(payload[16:18], uint16(c.cfg.VioTCPDownloadPort))

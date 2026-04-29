@@ -16,6 +16,7 @@ UDP_PORT = 53
 
 # Port for the UDP download channel (server sends data back to clients here).
 # Must be reachable from the client machine (open in firewall).
+# Set to 0 to disable UDP download entirely and use only VIO_TCP_DOWNLOAD_PORT.
 UDP_DOWNLOAD_PORT = 5555
 
 # Port for the raw UDP upload channel (receives direct client→server packets sent

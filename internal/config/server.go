@@ -294,10 +294,13 @@ func finalizeServerConfig(cfg ServerConfig) (ServerConfig, error) {
 		return cfg, fmt.Errorf("invalid UDP_PORT: %d", cfg.UDPPort)
 	}
 
-	if cfg.UDPDownloadPort == 0 {
+	// Apply default only when neither download channel is configured.
+	// If VIO_TCP_DOWNLOAD_PORT is set but UDP_DOWNLOAD_PORT is 0, that is an
+	// intentional VioTCP-only configuration and must not be overridden.
+	if cfg.UDPDownloadPort == 0 && cfg.VioTCPDownloadPort == 0 {
 		cfg.UDPDownloadPort = 5555
 	}
-	if cfg.UDPDownloadPort < 1 || cfg.UDPDownloadPort > 65535 {
+	if cfg.UDPDownloadPort < 0 || cfg.UDPDownloadPort > 65535 {
 		return cfg, fmt.Errorf("invalid UDP_DOWNLOAD_PORT: %d", cfg.UDPDownloadPort)
 	}
 
@@ -312,7 +315,6 @@ func finalizeServerConfig(cfg ServerConfig) (ServerConfig, error) {
 	if cfg.VioTCPSourceIP != "" && net.ParseIP(cfg.VioTCPSourceIP) == nil {
 		return cfg, fmt.Errorf("invalid VIO_TCP_SOURCE_IP: %q", cfg.VioTCPSourceIP)
 	}
-
 	if cfg.UDPReaders <= 0 {
 		cfg.UDPReaders = defaultServerConfig().UDPReaders
 	}

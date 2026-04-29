@@ -21,6 +21,7 @@ LISTEN_PORT = 18000
 # This is the address + port where the client listens for download packets.
 # The server will send all download traffic here.
 # Make sure UDP_DOWNLOAD_PORT is not blocked by your firewall.
+# Set to 0 / leave IP empty to disable UDP download (use VIO_TCP_DOWNLOAD_PORT instead).
 UDP_DOWNLOAD_IP   = "YOUR_CLIENT_PUBLIC_IP"   # e.g. "203.0.113.42"
 UDP_DOWNLOAD_PORT = 5555
 

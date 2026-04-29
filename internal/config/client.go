@@ -389,9 +389,6 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 	if cfg.VioTCPDownloadPort > 0 && (cfg.VioTCPServerPort == 0 || cfg.ServerIP == "") {
 		return cfg, fmt.Errorf("VIO_TCP_DOWNLOAD_PORT requires SERVER_IP and VIO_TCP_SERVER_PORT to be set")
 	}
-	if cfg.VioTCPDownloadPort > 0 && (cfg.UDPDownloadIP == "" || cfg.UDPDownloadPort == 0) {
-		return cfg, fmt.Errorf("VIO_TCP_DOWNLOAD_PORT requires UDP_DOWNLOAD_IP and UDP_DOWNLOAD_PORT to be set")
-	}
 
 	if len(cfg.SOCKS5User) > 255 {
 		return cfg, fmt.Errorf("SOCKS5_USER cannot exceed 255 bytes")

@@ -328,18 +328,6 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
-	// Open the dedicated UDP download socket (server→client asymmetric channel).
-	dlAddr := &net.UDPAddr{IP: net.ParseIP(s.cfg.UDPHost), Port: s.cfg.UDPDownloadPort}
-	dlConn, err := net.ListenUDP("udp", dlAddr)
-	if err != nil {
-		return fmt.Errorf("failed to open UDP download socket on port %d: %w", s.cfg.UDPDownloadPort, err)
-	}
-	s.udpDownloadConn = dlConn
-	defer func() {
-		_ = dlConn.Close()
-		s.udpDownloadConn = nil
-	}()
-
 	s.log.Infof(
 		"\U0001F4E1 <green>UDP Listener Ready, Addr: <cyan>%s</cyan>, Readers: <cyan>%d</cyan>, Workers: <cyan>%d</cyan>, Queue: <cyan>%d</cyan>, Sockets: <cyan>%d</cyan></green>",
 		s.cfg.Address(),
@@ -348,10 +336,27 @@ func (s *Server) Run(ctx context.Context) error {
 		s.cfg.EffectiveMaxConcurrentRequests(),
 		len(conns),
 	)
-	s.log.Infof(
-		"\U0001F4E4 <green>UDP Download Channel Ready on port <cyan>%d</cyan></green>",
-		s.cfg.UDPDownloadPort,
-	)
+
+	// Open the dedicated UDP download socket (server→client asymmetric channel).
+	// UDP_DOWNLOAD_PORT = 0 disables this channel; use VIO_TCP_DOWNLOAD_PORT instead.
+	if s.cfg.UDPDownloadPort > 0 {
+		dlAddr := &net.UDPAddr{IP: net.ParseIP(s.cfg.UDPHost), Port: s.cfg.UDPDownloadPort}
+		dlConn, dlErr := net.ListenUDP("udp", dlAddr)
+		if dlErr != nil {
+			return fmt.Errorf("failed to open UDP download socket on port %d: %w", s.cfg.UDPDownloadPort, dlErr)
+		}
+		s.udpDownloadConn = dlConn
+		defer func() {
+			_ = dlConn.Close()
+			s.udpDownloadConn = nil
+		}()
+		s.log.Infof(
+			"\U0001F4E4 <green>UDP Download Channel Ready on port <cyan>%d</cyan></green>",
+			s.cfg.UDPDownloadPort,
+		)
+	} else {
+		s.log.Infof("\U0001F4E4 <yellow>UDP Download Channel disabled (UDP_DOWNLOAD_PORT = 0)</yellow>")
+	}
 
 	// Open the raw UDP upload socket if configured (receives direct client→server uploads via SOCKS5 paths).
 	var ulConn *net.UDPConn
@@ -434,7 +439,9 @@ func (s *Server) Run(ctx context.Context) error {
 		for _, conn := range conns {
 			_ = conn.Close()
 		}
-		_ = dlConn.Close()
+		if s.udpDownloadConn != nil {
+			_ = s.udpDownloadConn.Close()
+		}
 		if ulConn != nil {
 			_ = ulConn.Close()
 		}
