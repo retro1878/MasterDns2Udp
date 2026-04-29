@@ -429,7 +429,7 @@ if [[ $MODE == "4" ]]; then
         ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" "$cur_udp_ip"
         UDP_DL_PORT="0"
         if [[ -n $UDP_DL_IP ]]; then
-            ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT)" "$cur_udp_port"
+            ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT, 0=off)" "$cur_udp_port"
         fi
         echo
         echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
@@ -647,7 +647,7 @@ else
     ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" ""
     UDP_DL_PORT="0"
     if [[ -n $UDP_DL_IP ]]; then
-        ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT)" "5555"
+        ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT, 0=off)" "5555"
     fi
 
     echo
