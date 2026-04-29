@@ -364,7 +364,10 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 		if net.ParseIP(cfg.UDPDownloadIP) == nil {
 			return cfg, fmt.Errorf("invalid UDP_DOWNLOAD_IP: %q", cfg.UDPDownloadIP)
 		}
-		if cfg.UDPDownloadPort < 1 || cfg.UDPDownloadPort > 65535 {
+		if cfg.UDPDownloadPort == 0 {
+			// Port 0 means UDP download disabled — clear IP silently
+			cfg.UDPDownloadIP = ""
+		} else if cfg.UDPDownloadPort < 1 || cfg.UDPDownloadPort > 65535 {
 			return cfg, fmt.Errorf("UDP_DOWNLOAD_IP is set but UDP_DOWNLOAD_PORT is invalid: %d", cfg.UDPDownloadPort)
 		}
 	}
