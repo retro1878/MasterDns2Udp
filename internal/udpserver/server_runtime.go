@@ -405,7 +405,9 @@ func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts V
 	if err != nil {
 		return
 	}
-	_, _ = conn.WriteToUDP(encrypted, dst)
+	if dst.Port > 0 {
+		_, _ = conn.WriteToUDP(encrypted, dst)
+	}
 	if s.vioTCPSender != nil && vioTCPDstPort > 0 {
 		_ = s.vioTCPSender.Send(dst.IP, vioTCPDstPort, encrypted)
 	}

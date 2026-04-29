@@ -387,8 +387,13 @@ func (c *Client) buildSessionInitPayload() ([]byte, bool, [4]byte, error) {
 		}
 		copy(payload[10:14], ip)
 		binary.BigEndian.PutUint16(payload[14:16], uint16(c.cfg.UDPDownloadPort))
+	} else if hasVioTCP && c.cfg.UDPDownloadIP != "" {
+		// VioTCP-only: embed client IP with port=0 so server knows where to send VioTCP packets.
+		if ip := net.ParseIP(c.cfg.UDPDownloadIP).To4(); ip != nil {
+			copy(payload[10:14], ip)
+			// bytes 14-15 stay zero → server skips UDP channel but has the IP for VioTCP
+		}
 	}
-	// bytes 10..15 remain zero if hasVioTCP && !hasUDP; server skips UDP when port == 0
 
 	if hasVioTCP {
 		binary.BigEndian.PutUint16(payload[16:18], uint16(c.cfg.VioTCPDownloadPort))
