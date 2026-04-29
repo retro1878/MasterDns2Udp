@@ -535,6 +535,7 @@ if [[ $MODE == "4" ]]; then
         cur_udp_port=$(cfg_get "UDP_DOWNLOAD_PORT" "0")
         cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
         cur_vio_srv=$(cfg_get "VIO_TCP_SERVER_PORT" "0")
+        cur_vio_cip=$(cfg_get "VIO_TCP_CLIENT_IP" "")
 
         ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = UDP-only)" "$cur_srv"
         echo
@@ -548,6 +549,7 @@ if [[ $MODE == "4" ]]; then
         echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
         VIO_DL_PORT="0"
         VIO_SRV_PORT="0"
+        VIO_CLIENT_IP=""
         if [[ -z $SERVER_IP ]]; then
             info "Skipping VioTCP — SERVER_IP not set."
         else
@@ -558,6 +560,11 @@ if [[ $MODE == "4" ]]; then
                 echo "  Enter the same value as VIO_TCP_DOWNLOAD_PORT on the server."
                 ask_optional VIO_SRV_PORT \
                     "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "$cur_vio_srv"
+                if [[ -z $UDP_DL_IP ]]; then
+                    echo "  The server sends VioTCP packets to this IP (needed when UDP is disabled)."
+                    ask_optional VIO_CLIENT_IP \
+                        "This machine's public IPv4 for VioTCP return path" "$cur_vio_cip"
+                fi
             fi
         fi
         cfg_set "SERVER_IP"             "\"${SERVER_IP}\""
@@ -565,6 +572,7 @@ if [[ $MODE == "4" ]]; then
         cfg_set "UDP_DOWNLOAD_PORT"     "${UDP_DL_PORT}"
         cfg_set "VIO_TCP_DOWNLOAD_PORT" "${VIO_DL_PORT}"
         cfg_set "VIO_TCP_SERVER_PORT"   "${VIO_SRV_PORT}"
+        cfg_set "VIO_TCP_CLIENT_IP"     "\"${VIO_CLIENT_IP}\""
         ok "client.toml updated"
 
         banner "Firewall"
@@ -785,6 +793,7 @@ else
     echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
     VIO_DL_PORT="0"
     VIO_SRV_PORT="0"
+    VIO_CLIENT_IP=""
     if [[ -z $SERVER_IP ]]; then
         info "Skipping VioTCP — SERVER_IP not set."
     else
@@ -797,6 +806,11 @@ else
             echo "  The client's raw socket uses it to recognise tunnel packets."
             ask_optional VIO_SRV_PORT \
                 "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "0"
+            if [[ -z $UDP_DL_IP ]]; then
+                echo "  The server sends VioTCP packets to this IP (needed when UDP is disabled)."
+                ask_optional VIO_CLIENT_IP \
+                    "This machine's public IPv4 for VioTCP return path" ""
+            fi
         fi
     fi
 
@@ -861,6 +875,7 @@ SERVER_IP = "${SERVER_IP}"
 # ── Download Channel  (Mode A=UDP, Mode B=VioTCP, Mode C=both; 0=disabled) ───
 UDP_DOWNLOAD_IP       = "${UDP_DL_IP}"
 UDP_DOWNLOAD_PORT     = ${UDP_DL_PORT}
+VIO_TCP_CLIENT_IP     = "${VIO_CLIENT_IP}"
 VIO_TCP_DOWNLOAD_PORT = ${VIO_DL_PORT}
 VIO_TCP_SERVER_PORT   = ${VIO_SRV_PORT}
 
