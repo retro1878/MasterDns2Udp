@@ -111,6 +111,18 @@ collect_ip_port_list() {
     done
 }
 
+# Split a comma-separated domain string into a properly-quoted TOML array string.
+# Usage: build_domain_toml <result_var> "<raw_input>"
+build_domain_toml() {
+    local __out=$1 __raw=$2 __toml="["
+    IFS=',' read -ra __doms <<< "$__raw"
+    for __d in "${__doms[@]}"; do
+        __d="${__d#"${__d%%[![:space:]]*}"}"; __d="${__d%"${__d##*[![:space:]]}"}"
+        [[ -n $__d ]] && __toml+="\"${__d}\", "
+    done
+    printf -v "$__out" '%s' "${__toml%, }]"
+}
+
 check_arch() {
     local arch; arch=$(uname -m)
     [[ $arch == x86_64 ]] || die "Only x86_64 (amd64) is supported. Detected: $arch"
@@ -599,7 +611,8 @@ ok "Installing as: ${ROLE}"
 if [[ $ROLE == "server" ]]; then
 
     banner "Server configuration"
-    ask          DOMAIN      "Tunnel domain (e.g. vpn.example.com)"
+    ask          DOMAIN      "Tunnel domain(s), comma-separated (e.g. vpn.example.com)"
+    build_domain_toml DOMAIN_TOML "$DOMAIN"
     ask_optional DNS_PORT    "DNS listen port (UDP_PORT)"        "53"
     ask_optional UPSTREAM    "DNS upstream servers (comma-sep)"  "8.8.8.8:53,1.1.1.1:53"
     ask_optional LOG_LEVEL   "Log level (DEBUG/INFO/WARN/ERROR)" "INFO"
@@ -664,7 +677,7 @@ VIO_TCP_SOURCE_IP     = "${VIO_SRC_IP}"
 UDP_UPLOAD_PORT = ${UL_PORT}
 
 # ── DNS Domain ────────────────────────────────────────────────────────────────
-DOMAIN               = ["${DOMAIN}"]
+DOMAIN               = ${DOMAIN_TOML}
 MIN_VPN_LABEL_LENGTH = 3
 
 # ── Encryption ────────────────────────────────────────────────────────────────
@@ -741,7 +754,8 @@ CFGEOF
 else
 
     banner "Client configuration"
-    ask          DOMAIN       "Tunnel domain (must match server)"
+    ask          DOMAIN       "Tunnel domain(s), comma-separated (must match server)"
+    build_domain_toml DOMAIN_TOML "$DOMAIN"
     ask_optional LISTEN_PORT  "Local SOCKS5 listen port"               "18000"
     ask_optional LOG_LEVEL    "Log level (DEBUG/INFO/WARN/ERROR)"       "INFO"
 
@@ -855,7 +869,7 @@ UDP_UPLOAD_PORT       = ${UL_PORT}
 UPLOAD_SOCKS5_PROXIES = ${SOCKS5_PROXIES_TOML}
 
 # ── DNS Upload Channel ────────────────────────────────────────────────────────
-DOMAINS = ["${DOMAIN}"]
+DOMAINS = ${DOMAIN_TOML}
 
 # ── Encryption ────────────────────────────────────────────────────────────────
 DATA_ENCRYPTION_METHOD = 1
