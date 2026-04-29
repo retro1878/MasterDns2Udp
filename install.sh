@@ -301,14 +301,34 @@ fi
 # =============================================================================
 if [[ $MODE == "4" ]]; then
     banner "Reconfigure download channel"
-    echo "  1) Server"
-    echo "  2) Client"
-    echo
-    RC_ROLE=""
-    while [[ $RC_ROLE != "1" && $RC_ROLE != "2" ]]; do
-        read -rp "$(echo -e "${BOLD}Which role to reconfigure [1/2]: ${NC}")" RC_ROLE || RC_ROLE=""
-    done
-    [[ $RC_ROLE == "1" ]] && RC="server" || RC="client"
+
+    # Auto-detect installed roles by checking for config files
+    HAS_SERVER=false; HAS_CLIENT=false
+    [[ -f "${INSTALL_DIR}/server.toml" ]] && HAS_SERVER=true
+    [[ -f "${INSTALL_DIR}/client.toml" ]] && HAS_CLIENT=true
+
+    if ! $HAS_SERVER && ! $HAS_CLIENT; then
+        die "No installation found in ${INSTALL_DIR}. Run a fresh install first."
+    fi
+
+    if $HAS_SERVER && $HAS_CLIENT; then
+        info "Both server and client installations detected."
+        echo "  1) Server"
+        echo "  2) Client"
+        echo
+        RC_ROLE=""
+        while [[ $RC_ROLE != "1" && $RC_ROLE != "2" ]]; do
+            read -rp "$(echo -e "${BOLD}Which role to reconfigure [1/2]: ${NC}")" RC_ROLE || RC_ROLE=""
+        done
+        [[ $RC_ROLE == "1" ]] && RC="server" || RC="client"
+    elif $HAS_SERVER; then
+        RC="server"
+        ok "Detected server installation — reconfiguring server"
+    else
+        RC="client"
+        ok "Detected client installation — reconfiguring client"
+    fi
+
     CONFIG_PATH="${INSTALL_DIR}/${RC}.toml"
     [[ -f $CONFIG_PATH ]] || die "Config not found: ${CONFIG_PATH}. Run a fresh install first."
 
