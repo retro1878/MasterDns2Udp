@@ -4,6 +4,19 @@
 # Supports: server (Iran side) and client (outside side)
 # OS: Linux x86_64 (amd64)
 # =============================================================================
+
+# ── curl|bash bootstrap ───────────────────────────────────────────────────────
+# When piped via "curl URL | bash", bash reads the script from stdin, which
+# means interactive read commands compete with the pipe for the same fd.
+# Fix: drain the rest of the pipe into a temp file and re-exec from it.
+# BASH_SOURCE[0] is empty when bash is reading from stdin (pipe), non-empty
+# when reading from a file — so the re-exec'd process skips this block.
+if [[ -z "${BASH_SOURCE[0]:-}" ]]; then
+    _T=$(mktemp /tmp/md2u-install.XXXXXX.sh)
+    cat > "$_T"          # consume remaining pipe (rest of script)
+    exec bash "$_T" "$@" # re-exec from file; stdin now free for /dev/tty
+fi
+
 set -euo pipefail
 
 # ── Colours ───────────────────────────────────────────────────────────────────
