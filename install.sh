@@ -218,20 +218,61 @@ mkdir -p "$INSTALL_DIR"
 # UPDATE
 # =============================================================================
 if [[ $MODE == "3" ]]; then
+    banner "Pre-flight checks"
+
+    # Disk space — require at least 30 MB free in INSTALL_DIR
+    avail_kb=$(df -k "$INSTALL_DIR" 2>/dev/null | awk 'NR==2{print $4}')
+    if [[ -n $avail_kb && $avail_kb -lt 30720 ]]; then
+        warn "Low disk space: only $(( avail_kb / 1024 )) MB free in ${INSTALL_DIR}."
+        warn "At least 30 MB is recommended. The download may fail."
+        ask_yn "  Continue anyway?" N || exit 1
+    else
+        ok "Disk space OK ($(( avail_kb / 1024 )) MB free)"
+    fi
+
+    # Detect which services are currently running
+    RUNNING=()
+    for unit in masterdns2udp-server masterdns2udp-client; do
+        systemctl is-active --quiet "$unit" 2>/dev/null && RUNNING+=("$unit")
+    done
+
+    if [[ ${#RUNNING[@]} -gt 0 ]]; then
+        echo
+        warn "The following service(s) are currently active:"
+        for u in "${RUNNING[@]}"; do
+            echo -e "    ${YELLOW}•${NC} ${u}"
+        done
+        echo
+        warn "Update requires stopping each service briefly to replace the binary."
+        warn "Active connections will be dropped during the restart."
+        echo
+        ask_yn "  Proceed and restart affected service(s)?" N || exit 1
+    fi
+
     banner "Updating binaries"
     found=0
     for binary in masterdns2udp-server masterdns2udp-client; do
         dest="${INSTALL_DIR}/${binary}"
         unit="${binary}"
         if [[ -x "$dest" ]]; then
-            download_binary "$binary" "$dest"
             found=1
+            # Stop the service before replacing the binary to avoid write contention
+            was_active=false
             if systemctl is-active --quiet "$unit" 2>/dev/null; then
-                systemctl restart "$unit" \
+                was_active=true
+                info "Stopping ${unit}..."
+                systemctl stop "$unit" \
+                    || warn "Could not stop ${unit} — attempting download anyway"
+            fi
+
+            download_binary "$binary" "$dest"
+
+            if $was_active; then
+                systemctl start "$unit" \
                     && ok "Service ${unit} restarted" \
                     || warn "Failed to restart ${unit} — check: journalctl -u ${unit} -n 20"
             elif systemctl is-enabled --quiet "$unit" 2>/dev/null; then
-                info "Service ${unit} is enabled but not running — starting it"
+                info "Service ${unit} was not running — starting it"
                 systemctl start "$unit" \
                     && ok "Service ${unit} started" \
                     || warn "Failed to start ${unit} — check: journalctl -u ${unit} -n 20"
