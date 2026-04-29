@@ -9,53 +9,49 @@ package viotcp
 
 import (
 	"encoding/binary"
+	"math/rand"
 )
 
-// Violated TCP packet signature — mirrors GFW-Knocker's proven evasion fingerprint.
-// Reference: github.com/GFW-knocker/gfw_resist_tcp_proxy
+// Violated TCP packet parameters — base values kept for non-randomised fields.
 const (
 	vioTTL      = 64
 	vioWindow   = 8192
-	vioSeq      = 1  // static server-side sequence number
-	vioAck      = 0  // no acknowledgement
 	vioTCPFlags = 0x18 // PSH + ACK
-	vioIPID     = 1  // static IP identification — part of the violated signature
-	vioIPFlags  = 0  // no DF, no MF (IP flags = 0 = "violated")
+	vioIPFlags  = 0    // no DF, no MF
 
 	ipHeaderLen  = 20
 	tcpHeaderLen = 32 // 20 base + 12 bytes of TCP options
 	tcpDataOff   = tcpHeaderLen / 4 // 8
 )
 
-// tcpOptions is the fixed 12-byte TCP options block that makes the packet look
-// like a connection-establishment segment injected mid-stream:
+// tcpOptions is the fixed 12-byte TCP options block.
 //
 //	MSS=1280   (02 04 05 00)
 //	WScale=8   (03 03 08)
 //	SackOK     (04 02)
-//	EOL×3      (00 00 00)  padding to 4-byte boundary
+//	EOL×3      (00 00 00)
 var tcpOptions = [12]byte{
-	0x02, 0x04, 0x05, 0x00, // MSS = 1280
-	0x03, 0x03, 0x08,       // WScale = 8
-	0x04, 0x02,             // SackOK
-	0x00, 0x00, 0x00,       // EOL padding
+	0x02, 0x04, 0x05, 0x00,
+	0x03, 0x03, 0x08,
+	0x04, 0x02,
+	0x00, 0x00, 0x00,
 }
 
-// BuildPacket assembles a complete violated TCP packet (IP header + TCP header + payload).
-// The caller must provide all four-byte IPv4 addresses.
-func BuildPacket(srcIP, dstIP []byte, srcPort, dstPort uint16, payload []byte) []byte {
+// BuildPacket assembles a complete violated TCP packet.
+// seq, ack, and ipID are randomised per call by the Sender; passing explicit
+// values allows testing and the hole-puncher to control them.
+func BuildPacket(srcIP, dstIP []byte, srcPort, dstPort uint16, seq, ack uint32, ipID uint16, payload []byte) []byte {
 	totalLen := ipHeaderLen + tcpHeaderLen + len(payload)
 	pkt := make([]byte, totalLen)
 
 	// ── IP Header (20 bytes) ──────────────────────────────────────────────────
-	pkt[0] = 0x45                                                // Version=4, IHL=5 (20 bytes)
-	pkt[1] = 0x00                                                // DSCP/ECN
-	binary.BigEndian.PutUint16(pkt[2:4], uint16(totalLen))       // Total Length
-	binary.BigEndian.PutUint16(pkt[4:6], vioIPID)                // IP ID = 1
-	binary.BigEndian.PutUint16(pkt[6:8], vioIPFlags)             // Flags=0, FragOffset=0
-	pkt[8] = vioTTL                                              // TTL = 64
-	pkt[9] = 0x06                                                // Protocol = TCP
-	// pkt[10:12] IP checksum filled below
+	pkt[0] = 0x45
+	pkt[1] = 0x00
+	binary.BigEndian.PutUint16(pkt[2:4], uint16(totalLen))
+	binary.BigEndian.PutUint16(pkt[4:6], ipID)
+	binary.BigEndian.PutUint16(pkt[6:8], vioIPFlags)
+	pkt[8] = vioTTL
+	pkt[9] = 0x06 // TCP
 	copy(pkt[12:16], srcIP)
 	copy(pkt[16:20], dstIP)
 	binary.BigEndian.PutUint16(pkt[10:12], internetChecksum(pkt[:ipHeaderLen]))
@@ -64,13 +60,11 @@ func BuildPacket(srcIP, dstIP []byte, srcPort, dstPort uint16, payload []byte) [
 	tcp := pkt[ipHeaderLen:]
 	binary.BigEndian.PutUint16(tcp[0:2], srcPort)
 	binary.BigEndian.PutUint16(tcp[2:4], dstPort)
-	binary.BigEndian.PutUint32(tcp[4:8], vioSeq)                 // Seq = 1
-	binary.BigEndian.PutUint32(tcp[8:12], vioAck)                // Ack = 0
-	tcp[12] = tcpDataOff << 4                                    // Data Offset = 8 (32 bytes header)
-	tcp[13] = vioTCPFlags                                        // PSH + ACK
-	binary.BigEndian.PutUint16(tcp[14:16], vioWindow)            // Window = 8192
-	// tcp[16:18] TCP checksum filled below
-	// tcp[18:20] Urgent Pointer = 0
+	binary.BigEndian.PutUint32(tcp[4:8], seq)
+	binary.BigEndian.PutUint32(tcp[8:12], ack)
+	tcp[12] = tcpDataOff << 4
+	tcp[13] = vioTCPFlags
+	binary.BigEndian.PutUint16(tcp[14:16], vioWindow)
 	copy(tcp[20:32], tcpOptions[:])
 	copy(tcp[32:], payload)
 
@@ -78,6 +72,20 @@ func BuildPacket(srcIP, dstIP []byte, srcPort, dstPort uint16, payload []byte) [
 	binary.BigEndian.PutUint16(tcp[16:18], tcpPseudoChecksum(srcIP, dstIP, tcpSegLen, tcp))
 
 	return pkt
+}
+
+// randU32 returns a random uint32 in [low, math.MaxUint32].
+func randU32() uint32 {
+	return rand.Uint32()
+}
+
+// randU16 returns a random uint16 > 0.
+func randU16() uint16 {
+	v := uint16(rand.Uint32())
+	if v == 0 {
+		v = 1
+	}
+	return v
 }
 
 // internetChecksum computes the RFC 1071 one's-complement sum used by IP and TCP.

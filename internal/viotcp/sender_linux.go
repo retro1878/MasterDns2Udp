@@ -50,7 +50,7 @@ func (s *Sender) Send(dstIP net.IP, dstPort uint16, payload []byte) error {
 	if dst4 == nil {
 		return nil // ignore non-IPv4 destinations silently
 	}
-	pkt := BuildPacket(s.srcIP, dst4, s.srcPort, dstPort, payload)
+	pkt := BuildPacket(s.srcIP, dst4, s.srcPort, dstPort, randU32(), randU32(), randU16(), payload)
 
 	var addr syscall.SockaddrInet4
 	copy(addr.Addr[:], dst4)
