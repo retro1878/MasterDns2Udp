@@ -398,10 +398,10 @@ if [[ $MODE == "4" ]]; then
         cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
         cur_vio_srv=$(cfg_get "VIO_TCP_SERVER_PORT" "0")
 
-        ask_optional SERVER_IP "Iran server public IPv4 (blank = UDP-only)" "$cur_srv"
+        ask_optional SERVER_IP "masterdns2udp-server IP — the Iran-side machine (blank = UDP-only)" "$cur_srv"
         echo
         echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
-        ask_optional UDP_DL_IP "Your public IPv4 for UDP download (blank = disable)" "$cur_udp_ip"
+        ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" "$cur_udp_ip"
         UDP_DL_PORT="0"
         if [[ -n $UDP_DL_IP ]]; then
             ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT)" "$cur_udp_port"
@@ -603,13 +603,13 @@ else
     ask_optional LISTEN_PORT  "Local SOCKS5 listen port"               "18000"
     ask_optional LOG_LEVEL    "Log level (DEBUG/INFO/WARN/ERROR)"       "INFO"
 
-    banner "Iran server identity"
-    echo "  The server's public IPv4 is required for:"
+    banner "Tunnel server identity (the Iran-side machine)"
+    echo "  The masterdns2udp-server's public IPv4 is required for:"
     echo "    • Violated TCP download — raw socket filters inbound packets by source IP"
     echo "    • SOCKS5 upload paths   — upload packets are addressed to this IP"
     echo "  Leave blank if using Mode A (UDP download) only."
     echo
-    ask_optional SERVER_IP "Iran server public IPv4 (blank = UDP-only)" ""
+    ask_optional SERVER_IP "masterdns2udp-server IP — the Iran-side machine (blank = UDP-only)" ""
 
     banner "Download channel"
     echo "  Set a field to 0/blank to disable that mode, non-zero/filled to enable it."
@@ -619,7 +619,7 @@ else
     echo
 
     echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
-    ask_optional UDP_DL_IP "Your public IPv4 for UDP download (blank = disable Mode A)" ""
+    ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" ""
     UDP_DL_PORT="0"
     if [[ -n $UDP_DL_IP ]]; then
         ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT)" "5555"
