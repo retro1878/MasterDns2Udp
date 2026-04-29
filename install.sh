@@ -202,13 +202,14 @@ require_root
 check_arch
 
 banner "Installation type"
-echo "  1) Server  (runs on the Iran server — receives DNS tunnel traffic)"
-echo "  2) Client  (runs on the outside server — local SOCKS5 proxy)"
-echo "  3) Update  (re-download binaries for an existing installation)"
+echo "  1) Server      (runs on the Iran server — receives DNS tunnel traffic)"
+echo "  2) Client      (runs on the outside server — local SOCKS5 proxy)"
+echo "  3) Update      (re-download binaries for an existing installation)"
+echo "  4) Reconfigure (change download channel mode for an existing installation)"
 echo
 MODE=""
-while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" ]]; do
-    read -rp "$(echo -e "${BOLD}Choose [1/2/3]: ${NC}")" MODE || MODE=""
+while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" && $MODE != "4" ]]; do
+    read -rp "$(echo -e "${BOLD}Choose [1/2/3/4]: ${NC}")" MODE || MODE=""
 done
 
 mkdir -p "$INSTALL_DIR"
@@ -250,6 +251,146 @@ if [[ $MODE == "3" ]]; then
     echo
     echo -e "  Check status : ${CYAN}systemctl status masterdns2udp-server${NC}"
     echo -e "               : ${CYAN}systemctl status masterdns2udp-client${NC}"
+    echo
+    exit 0
+fi
+
+# =============================================================================
+# RECONFIGURE
+# =============================================================================
+if [[ $MODE == "4" ]]; then
+    banner "Reconfigure download channel"
+    echo "  1) Server"
+    echo "  2) Client"
+    echo
+    RC_ROLE=""
+    while [[ $RC_ROLE != "1" && $RC_ROLE != "2" ]]; do
+        read -rp "$(echo -e "${BOLD}Which role to reconfigure [1/2]: ${NC}")" RC_ROLE || RC_ROLE=""
+    done
+    [[ $RC_ROLE == "1" ]] && RC="server" || RC="client"
+    CONFIG_PATH="${INSTALL_DIR}/${RC}.toml"
+    [[ -f $CONFIG_PATH ]] || die "Config not found: ${CONFIG_PATH}. Run a fresh install first."
+
+    # Read a value from the existing TOML (single-line fields only)
+    cfg_get() {
+        grep -m1 "^${1}[[:space:]]*=" "$CONFIG_PATH" 2>/dev/null \
+            | sed 's/[^=]*=[[:space:]]*//' | tr -d '"' | tr -d "'" | xargs \
+            || echo "${2:-}"
+    }
+    # Update a key in-place or append it if missing
+    cfg_set() {
+        local key=$1 val=$2
+        if grep -q "^${key}[[:space:]]*=" "$CONFIG_PATH"; then
+            sed -i "s|^${key}[[:space:]]*=.*|${key} = ${val}|" "$CONFIG_PATH"
+        else
+            printf '\n%s = %s\n' "$key" "$val" >> "$CONFIG_PATH"
+        fi
+    }
+
+    if [[ $RC == "server" ]]; then
+        banner "Server download channel (current values shown as defaults)"
+        echo "  Mode A — Raw UDP  (0 = disabled)"
+        echo "  Mode B — VioTCP   (0 = disabled, requires root/CAP_NET_RAW)"
+        echo "  Mode C — Both"
+        echo
+        cur_udp=$(cfg_get "UDP_DOWNLOAD_PORT" "5555")
+        cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
+        cur_src=$(cfg_get "VIO_TCP_SOURCE_IP" "")
+        ask_optional UDP_DL_PORT "UDP download port     (Mode A, 0=off)" "$cur_udp"
+        ask_optional VIO_DL_PORT "VioTCP download port  (Mode B, 0=off)" "$cur_vio"
+        VIO_SRC_IP="$cur_src"
+        if [[ $VIO_DL_PORT != "0" ]]; then
+            ask_optional VIO_SRC_IP \
+                "Server public IPv4 for VioTCP packet headers (blank = auto-detect)" "$cur_src"
+        fi
+        cfg_set "UDP_DOWNLOAD_PORT"     "${UDP_DL_PORT}"
+        cfg_set "VIO_TCP_DOWNLOAD_PORT" "${VIO_DL_PORT}"
+        cfg_set "VIO_TCP_SOURCE_IP"     "\"${VIO_SRC_IP}\""
+        ok "server.toml updated"
+
+        banner "Firewall"
+        if [[ $UDP_DL_PORT != "0" ]]; then
+            if ask_yn "  Open/confirm UDP port ${UDP_DL_PORT} in firewall?"; then
+                open_port "$UDP_DL_PORT" udp
+            fi
+        fi
+        [[ $VIO_DL_PORT != "0" ]] && info "VioTCP: server sends OUT — no inbound firewall rule needed."
+
+        SVC="masterdns2udp-server"
+
+    else  # client
+        banner "Client download channel (current values shown as defaults)"
+        echo "  Mode A — Raw UDP  (0 = disabled)"
+        echo "  Mode B — VioTCP   (0 = disabled, requires SERVER_IP)"
+        echo "  Mode C — Both"
+        echo
+        cur_srv=$(cfg_get "SERVER_IP" "")
+        cur_udp_ip=$(cfg_get "UDP_DOWNLOAD_IP" "")
+        cur_udp_port=$(cfg_get "UDP_DOWNLOAD_PORT" "0")
+        cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
+        cur_vio_srv=$(cfg_get "VIO_TCP_SERVER_PORT" "0")
+
+        ask_optional SERVER_IP "Iran server public IPv4 (blank = UDP-only)" "$cur_srv"
+        echo
+        echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
+        ask_optional UDP_DL_IP "Your public IPv4 for UDP download (blank = disable)" "$cur_udp_ip"
+        UDP_DL_PORT="0"
+        if [[ -n $UDP_DL_IP ]]; then
+            ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT)" "$cur_udp_port"
+        fi
+        echo
+        echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
+        VIO_DL_PORT="0"
+        VIO_SRV_PORT="0"
+        if [[ -z $SERVER_IP ]]; then
+            info "Skipping VioTCP — SERVER_IP not set."
+        else
+            echo "  Pick any closed port on THIS machine (nothing must listen on it)."
+            ask_optional VIO_DL_PORT \
+                "Closed port on this machine for VioTCP (0 = disable)" "$cur_vio"
+            if [[ $VIO_DL_PORT != "0" ]]; then
+                echo "  Enter the same value as VIO_TCP_DOWNLOAD_PORT on the server."
+                ask_optional VIO_SRV_PORT \
+                    "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "$cur_vio_srv"
+            fi
+        fi
+        cfg_set "SERVER_IP"             "\"${SERVER_IP}\""
+        cfg_set "UDP_DOWNLOAD_IP"       "\"${UDP_DL_IP}\""
+        cfg_set "UDP_DOWNLOAD_PORT"     "${UDP_DL_PORT}"
+        cfg_set "VIO_TCP_DOWNLOAD_PORT" "${VIO_DL_PORT}"
+        cfg_set "VIO_TCP_SERVER_PORT"   "${VIO_SRV_PORT}"
+        ok "client.toml updated"
+
+        banner "Firewall"
+        if [[ -n $UDP_DL_IP && $UDP_DL_PORT != "0" ]]; then
+            if ask_yn "  Open/confirm UDP port ${UDP_DL_PORT} in firewall?"; then
+                open_port "$UDP_DL_PORT" udp
+            fi
+        fi
+        [[ $VIO_DL_PORT != "0" ]] && info "VioTCP: port ${VIO_DL_PORT} must stay CLOSED — do NOT open it."
+
+        SVC="masterdns2udp-client"
+    fi
+
+    # Restart the service to apply the new config
+    if systemctl is-active --quiet "$SVC" 2>/dev/null; then
+        systemctl restart "$SVC" \
+            && ok "Service ${SVC} restarted" \
+            || warn "Restart failed — check: journalctl -u ${SVC} -n 20"
+    elif systemctl is-enabled --quiet "$SVC" 2>/dev/null; then
+        info "Service ${SVC} is not running — starting it"
+        systemctl start "$SVC" \
+            && ok "Service ${SVC} started" \
+            || warn "Start failed — check: journalctl -u ${SVC} -n 20"
+    else
+        warn "Service ${SVC} is not enabled — config updated but not restarted."
+    fi
+
+    banner "Done"
+    echo
+    ok "Config updated: ${CONFIG_PATH}"
+    echo
+    echo -e "  View logs : ${CYAN}journalctl -u ${SVC} -f${NC}"
     echo
     exit 0
 fi
