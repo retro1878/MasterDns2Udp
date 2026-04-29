@@ -1,102 +1,149 @@
 # =============================================================================
 # MasterDns2Udp — Server Configuration
 # =============================================================================
-# Deploy this file alongside masterdns2udp-server on the Iran server.
-# Copy encrypt_key.txt (same key as the client) to the same directory.
+# This process runs on the IRAN side.
+# Clients upload traffic as DNS queries directed here; the server pushes
+# downloads back over a separate channel.
+#
+# QUICK START
+#   1. Point the NS record of your tunnel subdomain to this server's public IP.
+#   2. Set DOMAIN below to match that subdomain.
+#   3. Generate a shared key:  openssl rand -base64 32 > encrypt_key.txt
+#      (copy the same key to every client)
+#   4. Pick a download channel (see section below).
+#   5. Open the required ports in your firewall and start the process.
 # =============================================================================
 
-# ── Network ──────────────────────────────────────────────────────────────────
+# ── Bind Address ──────────────────────────────────────────────────────────────
 
-# IP to bind on. 0.0.0.0 = all interfaces.
+# Interface to listen on for DNS upload traffic. 0.0.0.0 = all interfaces.
 UDP_HOST = "0.0.0.0"
 
-# Port for the DNS upload channel (clients send DNS queries here).
-# Use 53 if you want standard DNS port, or any other port you prefer.
+# Port for the DNS upload channel — clients send tunnel queries here.
+# 53 is standard. If running alongside a local resolver, use another port.
 UDP_PORT = 53
 
-# Port for the UDP download channel (server sends data back to clients here).
-# Must be reachable from the client machine (open in firewall).
-# Set to 0 to disable UDP download entirely and use only VIO_TCP_DOWNLOAD_PORT.
+# ── Download Channel ──────────────────────────────────────────────────────────
+#
+# The server needs a return path to each client. Two transport types are
+# available; enable one or both depending on what the network allows.
+#
+#  Mode A — Raw UDP  (default, lowest overhead)
+#    The server sends encrypted packets as plain UDP datagrams directly to
+#    each client's public IP. Fast and simple on networks that allow it.
+#    ► Set UDP_DOWNLOAD_PORT to a non-zero port (e.g. 5555).
+#      Client must set UDP_DOWNLOAD_IP + UDP_DOWNLOAD_PORT to match.
+#      Open this port in your firewall (ufw allow 5555/udp).
+#
+#  Mode B — Violated TCP  (for networks that block raw UDP, e.g. some Irancell)
+#    The server crafts intentionally malformed TCP segments (PSH+ACK without
+#    handshake, static seq=1, TCP options in wrong position) that pass through
+#    fail-open DPI. Requires root / CAP_NET_RAW on this machine.
+#    ► Set VIO_TCP_DOWNLOAD_PORT to a non-zero port (e.g. 45000).
+#      Client must set VIO_TCP_SERVER_PORT = this value and SERVER_IP = this
+#      server's public IP. Set UDP_DOWNLOAD_PORT = 0 if UDP is blocked.
+#      No firewall rule needed (server sends OUT; it never listens on this port).
+#
+#  Mode C — Both  (redundancy / mixed networks)
+#    Both transports carry every packet; the client's ARQ layer deduplicates
+#    copies that arrive via both paths simultaneously.
+#    ► Set both ports to non-zero values.
+
+# Raw UDP download port. 0 = disabled.
 UDP_DOWNLOAD_PORT = 5555
 
-# Port for the raw UDP upload channel (receives direct client→server packets sent
-# via SOCKS5 paths). Set to 0 to disable. Must match UDP_UPLOAD_PORT on the client.
-# Also open this port in your firewall if you enable it (e.g. ufw allow 5556/udp).
-UDP_UPLOAD_PORT = 0
-
-# ── Violated TCP Download Channel ────────────────────────────────────────────
-
-# TCP source port used when sending violated TCP download packets to clients.
-# Requires root / CAP_NET_RAW. Set to 0 to disable.
-# This must match VIO_TCP_SERVER_PORT on the client.
-# Example: VIO_TCP_DOWNLOAD_PORT = 45000
+# Violated TCP download port (server's TCP source port). 0 = disabled.
+# Requires root / CAP_NET_RAW. Must match VIO_TCP_SERVER_PORT on the client.
 VIO_TCP_DOWNLOAD_PORT = 0
 
-# Public IPv4 of this server (used as the IP source in violated TCP headers).
-# Leave empty to auto-detect from network interfaces.
+# Public IPv4 of this server, written into violated TCP packet headers.
+# Leave empty to auto-detect from network interfaces (correct for single-IP VPS).
+# Set explicitly if the server has multiple IPs or auto-detect picks the wrong one.
 VIO_TCP_SOURCE_IP = ""
 
-# ── DNS Domain ───────────────────────────────────────────────────────────────
+# ── SOCKS5 Upload Path (optional) ─────────────────────────────────────────────
+#
+# Clients can mirror every upload packet through local SOCKS5 proxies as
+# an additional upload path alongside DNS. Enable this port to receive those
+# packets. Must also open in firewall (ufw allow 5556/udp).
+# Counterpart on the client: UDP_UPLOAD_PORT + UPLOAD_SOCKS5_PROXIES.
 
-# The domain(s) the server will intercept as tunnel traffic.
-# Must match what clients put in their DOMAINS setting.
-# Example: your domain is "tunnel.example.com" — set it here.
+# UDP port for direct client→server upload packets via SOCKS5 paths. 0 = disabled.
+UDP_UPLOAD_PORT = 0
+
+# ── DNS Domain ────────────────────────────────────────────────────────────────
+
+# The subdomain(s) this server claims as tunnel traffic.
+# Must match DOMAINS on every client. Set the NS record for this subdomain
+# to point to this server so resolvers forward queries here.
 DOMAIN = ["tunnel.example.com"]
 
-# Minimum label length the server requires to treat a query as tunnel traffic.
+# Minimum label length to treat a DNS query as tunnel traffic (not public DNS).
+# Default 3 is fine for virtually all use cases.
 MIN_VPN_LABEL_LENGTH = 3
 
-# ── Encryption ───────────────────────────────────────────────────────────────
+# ── Encryption ────────────────────────────────────────────────────────────────
 
-# Encryption method. 1 = ChaCha20-Poly1305 (recommended).
+# Encryption algorithm. 1 = ChaCha20-Poly1305 (recommended, no alternative).
 DATA_ENCRYPTION_METHOD = 1
 
-# Path to the shared key file (relative to this config file's directory).
-# Generate with: openssl rand -base64 32 > encrypt_key.txt
-# The client must use the exact same key (via ENCRYPTION_KEY in client.toml).
+# Path to the shared secret key file. Generate once with:
+#   openssl rand -base64 32 > encrypt_key.txt
+# The client must use the exact same value in its ENCRYPTION_KEY field.
 ENCRYPTION_KEY_FILE = "encrypt_key.txt"
 
-# ── Upstream DNS (for proxying real DNS queries) ──────────────────────────────
+# ── Upstream DNS ──────────────────────────────────────────────────────────────
+#
+# When the server receives a DNS query that is NOT tunnel traffic (normal
+# public DNS), it forwards the query to these resolvers and returns the real
+# answer, so the server can act as a transparent DNS proxy on port 53.
 
-# DNS servers the Iran server uses to resolve legitimate DNS queries.
 DNS_UPSTREAM_SERVERS = ["8.8.8.8:53", "1.1.1.1:53"]
-DNS_UPSTREAM_TIMEOUT = 4.0
+DNS_UPSTREAM_TIMEOUT = 4.0   # seconds before the upstream query is abandoned
 
-# ── SOCKS5 / Forwarding ──────────────────────────────────────────────────────
+# ── Forwarding Protocol ───────────────────────────────────────────────────────
 
-# PROTOCOL_TYPE controls what the server proxies for clients.
-# "SOCKS5" = built-in SOCKS5 proxy (no extra software needed).
+# What the server proxies on behalf of clients.
+# "SOCKS5" = built-in SOCKS5 server, no external software required.
 PROTOCOL_TYPE = "SOCKS5"
 
-# Set to true to require a username/password on the SOCKS5 proxy.
+# Require username / password on the built-in SOCKS5 proxy.
+SOCKS5_AUTH = false
+SOCKS5_USER = "admin"
+SOCKS5_PASS = "changeme"
+
+# Use an already-running external SOCKS5 proxy instead of the built-in one.
 USE_EXTERNAL_SOCKS5 = false
-SOCKS5_AUTH        = false
-SOCKS5_USER        = "admin"
-SOCKS5_PASS        = "changeme"
 
 # ── Performance ───────────────────────────────────────────────────────────────
 
-# Number of parallel UDP reader goroutines (auto-scaled by CPU if left at 0).
+# Parallel UDP reader goroutines. 0 = auto (scales with CPU count).
 UDP_READERS = 4
 
-# Number of DNS request worker goroutines.
+# DNS request worker goroutines.
 DNS_REQUEST_WORKERS = 8
 
-# ── Compression ──────────────────────────────────────────────────────────────
+# ── Compression ───────────────────────────────────────────────────────────────
 
-# Compression types the server accepts from / sends to clients.
+# Compression algorithms the server is willing to use.
+# Clients negotiate the actual type; the server accepts any listed here.
 # 0=off  1=ZSTD  2=LZ4  3=ZLIB
 SUPPORTED_UPLOAD_COMPRESSION_TYPES   = [0, 1, 2, 3]
 SUPPORTED_DOWNLOAD_COMPRESSION_TYPES = [0, 1, 2, 3]
 
-# ── Session / ARQ ─────────────────────────────────────────────────────────────
+# ── Session & Reliability (ARQ) ───────────────────────────────────────────────
 
-SESSION_TIMEOUT_SECONDS  = 300.0
-ARQ_WINDOW_SIZE          = 800
-ARQ_INITIAL_RTO_SECONDS  = 1.0
-ARQ_MAX_RTO_SECONDS      = 5.0
+# How long an idle session is kept before being evicted.
+SESSION_TIMEOUT_SECONDS = 300.0
+
+# ARQ sliding-window size (packets in flight before the sender must wait for ACK).
+ARQ_WINDOW_SIZE = 800
+
+# Retransmission timeout: initial value and maximum back-off ceiling.
+ARQ_INITIAL_RTO_SECONDS = 1.0
+ARQ_MAX_RTO_SECONDS     = 5.0
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
-# DEBUG, INFO, WARN, ERROR
+# DEBUG, INFO, WARN, ERROR — use INFO in production, DEBUG for diagnostics.
 LOG_LEVEL = "INFO"

@@ -1,119 +1,152 @@
 # =============================================================================
 # MasterDns2Udp — Client Configuration
 # =============================================================================
-# Deploy this file alongside masterdns2udp-client and client_resolvers.txt
-# on the client server (outside Iran).
+# This process runs OUTSIDE Iran (the "abroad" server).
+# It exposes a local SOCKS5 proxy that apps connect to; traffic is tunneled
+# through DNS queries to the Iran server and returned via the download channel.
+#
+# QUICK START
+#   1. Set DOMAINS to match the server's DOMAIN.
+#   2. Set ENCRYPTION_KEY to the contents of the server's encrypt_key.txt.
+#   3. Configure the download channel to match the server (see section below).
+#   4. Populate client_resolvers.txt with Iranian DNS resolvers.
+#   5. Start: masterdns2udp-client -config client.toml
 # =============================================================================
 
-# ── Protocol ─────────────────────────────────────────────────────────────────
+# ── Local SOCKS5 Proxy ────────────────────────────────────────────────────────
 
+# Address and port where local apps (browser, curl, etc.) connect.
 PROTOCOL_TYPE = "SOCKS5"
+LISTEN_IP     = "127.0.0.1"
+LISTEN_PORT   = 18000
 
-# ── Local proxy (what apps connect to) ───────────────────────────────────────
+# ── Server Identity ───────────────────────────────────────────────────────────
+#
+# The Iran server's public IPv4. Used in two places:
+#   • Violated TCP download: raw socket filters inbound packets by this IP.
+#   • SOCKS5 upload: packets are addressed to this IP via the proxy.
+# Required when either VIO_TCP_DOWNLOAD_PORT or UPLOAD_SOCKS5_PROXIES is set.
 
-# The SOCKS5 proxy that local apps (browser, curl, etc.) point at.
-LISTEN_IP   = "127.0.0.1"
-LISTEN_PORT = 18000
+SERVER_IP = ""   # e.g. "203.0.113.10"
 
-# ── UDP Download Channel ──────────────────────────────────────────────────────
+# ── Download Channel ──────────────────────────────────────────────────────────
+#
+# Must mirror the server's choice. See server.toml for the full explanation.
+#
+#  Mode A — Raw UDP  (default)
+#    ► Set UDP_DOWNLOAD_IP to this machine's public IPv4.
+#      Set UDP_DOWNLOAD_PORT to match server's UDP_DOWNLOAD_PORT (e.g. 5555).
+#      Open this port in your firewall (inbound UDP from the Iran server).
+#      Leave VIO_TCP_DOWNLOAD_PORT = 0.
+#
+#  Mode B — Violated TCP  (when UDP is blocked)
+#    ► Set SERVER_IP above to the Iran server's public IP.
+#      Set VIO_TCP_SERVER_PORT to match server's VIO_TCP_DOWNLOAD_PORT (e.g. 45000).
+#      Set VIO_TCP_DOWNLOAD_PORT to a port on THIS machine (e.g. 45001).
+#        • The port must be CLOSED (no service listening on it) — the kernel
+#          will RST the segment, which the server ignores.
+#        • No firewall rule needed; do NOT open this port.
+#      Set UDP_DOWNLOAD_IP = "" and UDP_DOWNLOAD_PORT = 0.
+#      Requires root / CAP_NET_RAW on this machine.
+#
+#  Mode C — Both  (redundancy / mixed networks)
+#    ► Configure all fields for both Mode A and Mode B.
+#      ARQ deduplicates packets that arrive via both paths simultaneously.
 
-# Your public IPv4 address that the Iran server can reach.
-# This is the address + port where the client listens for download packets.
-# The server will send all download traffic here.
-# Make sure UDP_DOWNLOAD_PORT is not blocked by your firewall.
-# Set to 0 / leave IP empty to disable UDP download (use VIO_TCP_DOWNLOAD_PORT instead).
+# Your public IPv4 that the Iran server can reach for UDP download.
+# Leave empty to disable UDP download.
 UDP_DOWNLOAD_IP   = "YOUR_CLIENT_PUBLIC_IP"   # e.g. "203.0.113.42"
 UDP_DOWNLOAD_PORT = 5555
 
-# ── SOCKS5 Upload Channel (optional) ─────────────────────────────────────────
+# Violated TCP download: port on THIS machine the server sends to.
+# 0 = disabled. SERVER_IP and VIO_TCP_SERVER_PORT must be set if non-zero.
+VIO_TCP_DOWNLOAD_PORT = 0   # e.g. 45001
 
-# Public IPv4 of the abroad server (used to construct SOCKS5 UDP packets).
-# Required when UPLOAD_SOCKS5_PROXIES is set.
-SERVER_IP = ""   # e.g. "203.0.113.10"
+# Iran server's TCP source port (the server's VIO_TCP_DOWNLOAD_PORT value).
+# Used to filter inbound raw socket packets. Must match server's VIO_TCP_DOWNLOAD_PORT.
+VIO_TCP_SERVER_PORT = 0     # e.g. 45000
 
-# UDP port on the server that receives raw upload packets (server UDP_UPLOAD_PORT).
-# Set to 0 to disable SOCKS5 upload entirely.
+# ── SOCKS5 Upload Paths (optional) ────────────────────────────────────────────
+#
+# Mirror every upload packet through local SOCKS5 proxies as parallel upload
+# paths alongside the DNS channel. Each proxy must support UDP ASSOCIATE.
+# Useful with ArvanCloud CDN reverse tunnels or similar intermediaries.
+# SERVER_IP (above) and UDP_UPLOAD_PORT must both be set to enable this.
+
+# UDP port on the Iran server that receives SOCKS5-proxied upload packets.
+# Must match server's UDP_UPLOAD_PORT. 0 = disabled.
 UDP_UPLOAD_PORT = 0   # e.g. 5556
 
-# Local SOCKS5 proxies that provide independent paths to the server.
-# Each proxy must support UDP ASSOCIATE. One entry per proxy.
+# List of local SOCKS5 proxies to mirror uploads through.
 # Example: UPLOAD_SOCKS5_PROXIES = ["127.0.0.1:13000", "127.0.0.1:14000"]
 UPLOAD_SOCKS5_PROXIES = []
 
-# ── Violated TCP Download Channel ────────────────────────────────────────────
-
-# Parallel download path: server sends encrypted VPN packets as violated TCP
-# (PSH+ACK without prior handshake) alongside the normal UDP download channel.
-# ARQ deduplicates copies that arrive via both channels simultaneously.
-# Requires root / CAP_NET_RAW on the client. Set to 0 to disable.
-
-# Port the server targets when sending violated TCP to this client.
-# Must NOT be occupied by any listening service (kernel will RST, server ignores it).
-# Must match VIO_TCP_DOWNLOAD_PORT on the server.
-VIO_TCP_DOWNLOAD_PORT = 0   # e.g. 45001
-
-# Source port the server uses in violated TCP headers — used for packet filtering.
-# Must match VIO_TCP_DOWNLOAD_PORT in server.toml.
-VIO_TCP_SERVER_PORT = 0     # e.g. 45000
-
-# SERVER_IP (already set above) is also used as the IP filter for the receiver.
-
 # ── DNS Upload Channel ────────────────────────────────────────────────────────
+#
+# Upload traffic is carried as DNS TXT queries through resolvers loaded from
+# client_resolvers.txt (one entry per line).
+# Format:   IP:PORT
+#           IP:PORT  domain.example.com   (domain-locked resolver)
+# Use Iranian public resolvers or the Iran server's own IP on port 53.
+# Example:  178.22.122.100:53
+#           YOUR_IRAN_SERVER_IP:53   tunnel.example.com
 
 # The tunnel domain — must match DOMAIN on the server.
 DOMAINS = ["tunnel.example.com"]
 
-# ── Encryption ───────────────────────────────────────────────────────────────
+# ── Encryption ────────────────────────────────────────────────────────────────
 
-# Encryption method. Must match DATA_ENCRYPTION_METHOD on the server.
+# Must match DATA_ENCRYPTION_METHOD on the server. 1 = ChaCha20-Poly1305.
 DATA_ENCRYPTION_METHOD = 1
 
-# Shared encryption key — must be exactly the same value as in the server's
-# encrypt_key.txt. Paste the contents of that file here as a single string.
+# Shared secret key — paste the contents of the server's encrypt_key.txt here.
 ENCRYPTION_KEY = "PASTE_YOUR_BASE64_KEY_HERE"
 
-# ── Resolvers (DNS servers to send tunnel queries through) ────────────────────
+# ── Compression ───────────────────────────────────────────────────────────────
 
-# List of DNS resolvers is loaded from client_resolvers.txt (one per line).
-# Format: IP:PORT  or  IP:PORT domain.example.com
-# These are the DNS servers your ISP or environment lets through.
-# Example entries for client_resolvers.txt:
-#   8.8.8.8:53
-#   1.1.1.1:53
-#   YOUR_IRAN_SERVER_IP:53   tunnel.example.com
-
-# ── Compression ──────────────────────────────────────────────────────────────
-
-# 0=off  1=ZSTD  2=LZ4  3=ZLIB
+# Compression for upload and download traffic. 0=off  1=ZSTD  2=LZ4  3=ZLIB
+# Enable to reduce DNS query count on high-bandwidth streams.
 UPLOAD_COMPRESSION_TYPE   = 0
 DOWNLOAD_COMPRESSION_TYPE = 0
-COMPRESSION_MIN_SIZE      = 120
+COMPRESSION_MIN_SIZE      = 120   # bytes — smaller payloads are not compressed
 
-# ── MTU (packet size negotiation) ────────────────────────────────────────────
+# ── Packet Size (MTU negotiation) ─────────────────────────────────────────────
+#
+# Upload MTU: payload bytes per DNS query label group (38–150 is typical).
+# Download MTU: payload bytes per UDP/VioTCP packet (100–500).
+# The tunnel negotiates the actual values within these min/max bounds.
 
 MIN_UPLOAD_MTU   = 38
 MAX_UPLOAD_MTU   = 150
 MIN_DOWNLOAD_MTU = 100
 MAX_DOWNLOAD_MTU = 500
 
-# ── Packet duplication (reliability over lossy links) ────────────────────────
+# ── Reliability ───────────────────────────────────────────────────────────────
 
+# How many times each packet is sent simultaneously (duplicates are deduplicated
+# by ARQ sequence numbers). Higher values improve reliability on lossy paths
+# at the cost of bandwidth. 1 = no duplication, 2–3 is typical.
 PACKET_DUPLICATION_COUNT       = 2
 SETUP_PACKET_DUPLICATION_COUNT = 2
 
-# ── Workers & Tuning ─────────────────────────────────────────────────────────
-
-RX_TX_WORKERS    = 4
-ARQ_WINDOW_SIZE  = 600
+# ARQ sliding-window size and retransmission timeouts. Should not need tuning.
+ARQ_WINDOW_SIZE         = 600
 ARQ_INITIAL_RTO_SECONDS = 1.0
 ARQ_MAX_RTO_SECONDS     = 5.0
 
-# ── Ping / Keepalive ─────────────────────────────────────────────────────────
+# ── Workers ───────────────────────────────────────────────────────────────────
 
+# Parallel goroutines for tunnel send/receive. Match to CPU core count.
+RX_TX_WORKERS = 4
+
+# ── Keepalive ─────────────────────────────────────────────────────────────────
+
+# How often to ping the server when traffic is flowing vs. when idle.
+# Lower aggressive interval = better latency; higher lazy = less DNS noise.
 PING_AGGRESSIVE_INTERVAL_SECONDS = 0.1
 PING_LAZY_INTERVAL_SECONDS       = 0.75
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
-# DEBUG, INFO, WARN, ERROR
+# DEBUG, INFO, WARN, ERROR — use INFO in production, DEBUG for diagnostics.
 LOG_LEVEL = "INFO"
