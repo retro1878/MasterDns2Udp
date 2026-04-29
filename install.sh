@@ -180,6 +180,24 @@ open_port_ufw() {
     fi
 }
 
+open_port_iptables() {
+    local port=$1 proto=${2:-udp}
+    if command -v iptables &>/dev/null; then
+        # Only add if the rule doesn't already exist
+        iptables -C INPUT -p "$proto" --dport "$port" -j ACCEPT 2>/dev/null \
+            || iptables -I INPUT -p "$proto" --dport "$port" -j ACCEPT \
+            && ok "iptables: ACCEPT ${proto}/${port}" \
+            || warn "iptables: could not add rule for ${port}/${proto}"
+        # Persist if iptables-save is available
+        if command -v iptables-save &>/dev/null; then
+            if [[ -d /etc/iptables ]]; then
+                iptables-save > /etc/iptables/rules.v4 2>/dev/null \
+                    && ok "iptables: rules saved to /etc/iptables/rules.v4"
+            fi
+        fi
+    fi
+}
+
 open_port_firewalld() {
     local port=$1 proto=${2:-udp}
     if command -v firewall-cmd &>/dev/null && firewall-cmd --state &>/dev/null; then
@@ -191,7 +209,7 @@ open_port_firewalld() {
     fi
 }
 
-open_port() { open_port_ufw "$@"; open_port_firewalld "$@"; }
+open_port() { open_port_ufw "$@"; open_port_firewalld "$@"; open_port_iptables "$@"; }
 
 write_systemd_service() {
     local unit=$1 desc=$2 binary=$3 config=$4 extra_after=${5:-}
@@ -581,7 +599,13 @@ if [[ $MODE == "4" ]]; then
                 open_port "$UDP_DL_PORT" udp
             fi
         fi
-        [[ $VIO_DL_PORT != "0" ]] && info "VioTCP: port ${VIO_DL_PORT} must stay CLOSED — do NOT open it."
+        if [[ $VIO_DL_PORT != "0" ]]; then
+            info "VioTCP: no service must listen on port ${VIO_DL_PORT}, but iptables must ACCEPT it"
+            info "  so the raw socket can see incoming packets before the kernel RSTs them."
+            if ask_yn "  Add iptables ACCEPT rule for TCP port ${VIO_DL_PORT}?" Y; then
+                open_port_iptables "$VIO_DL_PORT" tcp
+            fi
+        fi
 
         SVC="masterdns2udp-client"
     fi
@@ -798,7 +822,7 @@ else
         info "Skipping VioTCP — SERVER_IP not set."
     else
         echo "  Choose any closed port on THIS machine (nothing must listen on it)."
-        echo "  Do NOT open it in the firewall — the kernel RST is harmless and expected."
+        echo "  iptables must ACCEPT it so the raw socket sees the packets; the kernel RSTs automatically."
         ask_optional VIO_DL_PORT \
             "Closed port on this machine for VioTCP (0 = disable Mode B)" "0"
         if [[ $VIO_DL_PORT != "0" ]]; then
@@ -933,7 +957,11 @@ CFGEOF
         info "No UDP download port to open."
     fi
     if [[ $VIO_DL_PORT != "0" ]]; then
-        info "VioTCP: port ${VIO_DL_PORT} must stay CLOSED — do NOT open it in the firewall."
+        info "VioTCP: no service must listen on port ${VIO_DL_PORT}, but iptables must ACCEPT"
+        info "  inbound TCP so the raw socket can read packets before the kernel RSTs them."
+        if ask_yn "  Add iptables ACCEPT rule for TCP port ${VIO_DL_PORT}?" Y; then
+            open_port_iptables "$VIO_DL_PORT" tcp
+        fi
     fi
 
     banner "Systemd service"

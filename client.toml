@@ -44,9 +44,10 @@ SERVER_IP = ""   # e.g. "203.0.113.10"
 #      Set VIO_TCP_CLIENT_IP to THIS machine's public IPv4.
 #      Set VIO_TCP_SERVER_PORT to match server's VIO_TCP_DOWNLOAD_PORT (e.g. 45000).
 #      Set VIO_TCP_DOWNLOAD_PORT to a port on THIS machine (e.g. 45001).
-#        • The port must be CLOSED (no service listening on it) — the kernel
-#          will RST the segment, which the server ignores.
-#        • No firewall rule needed; do NOT open this port.
+#        • No service must listen on this port — the kernel RSTs the segment,
+#          which the server ignores.
+#        • iptables must ACCEPT this port so the raw socket sees the packets
+#          before the kernel drops them. Add: iptables -I INPUT -p tcp --dport PORT -j ACCEPT
 #      Leave UDP_DOWNLOAD_IP = "" and UDP_DOWNLOAD_PORT = 0.
 #      Requires root / CAP_NET_RAW on this machine.
 #
