@@ -20,13 +20,18 @@ fi
 set -euo pipefail
 
 # ── Colours ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+# $'...' gives real ESC bytes; \001/\002 tell readline not to count them toward
+# the visible line length (prevents default-value wrapping in read -rp prompts).
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
+CYAN=$'\033[0;36m'; BOLD=$'\033[1m'; NC=$'\033[0m'
+# Readline-safe wrappers for use inside read -rp prompts only
+_PB=$'\001\033[1m\002'    # prompt bold
+_PN=$'\001\033[0m\002'    # prompt normal/reset
 
-ok()     { echo -e "${GREEN}✔${NC}  $*"; }
-info()   { echo -e "${CYAN}ℹ${NC}  $*"; }
-warn()   { echo -e "${YELLOW}⚠${NC}  $*"; }
-die()    { echo -e "${RED}✘  $*${NC}" >&2; exit 1; }
+ok()     { echo "${GREEN}✔${NC}  $*"; }
+info()   { echo "${CYAN}ℹ${NC}  $*"; }
+warn()   { echo "${YELLOW}⚠${NC}  $*"; }
+die()    { echo "${RED}✘  $*${NC}" >&2; exit 1; }
 banner() { echo -e "\n${BOLD}${CYAN}── $* ──${NC}"; }
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -45,7 +50,7 @@ ask() {
     local __hint=""
     [[ -n $__default ]] && __hint=" [${__default}]"
     while true; do
-        read -rp "$(echo -e "${BOLD}${__prompt}${__hint}: ${NC}")" __input || __input=""
+        read -rp "${_PB}${__prompt}${__hint}: ${_PN}" __input || __input=""
         __input="${__input:-$__default}"
         if [[ -n $__input ]]; then
             printf -v "$__var" '%s' "$__input"
@@ -59,7 +64,7 @@ ask_optional() {
     local __var=$1 __prompt=$2 __default=${3:-}
     local __hint=""
     [[ -n $__default ]] && __hint=" [${__default}]"
-    read -rp "$(echo -e "${BOLD}${__prompt}${__hint}: ${NC}")" __input || __input=""
+    read -rp "${_PB}${__prompt}${__hint}: ${_PN}" __input || __input=""
     printf -v "$__var" '%s' "${__input:-$__default}"
 }
 
@@ -67,7 +72,7 @@ ask_yn() {
     local __prompt=$1 __default=${2:-Y}
     while true; do
         local __hint="Y/n"; [[ $__default == N ]] && __hint="y/N"
-        read -rp "$(echo -e "${BOLD}${__prompt} [${__hint}]: ${NC}")" __ans || __ans=""
+        read -rp "${_PB}${__prompt} [${__hint}]: ${_PN}" __ans || __ans=""
         __ans="${__ans:-$__default}"
         case "${__ans,,}" in
             y|yes) return 0 ;;
@@ -209,7 +214,7 @@ echo "  4) Reconfigure (change download channel mode for an existing installatio
 echo
 MODE=""
 while [[ $MODE != "1" && $MODE != "2" && $MODE != "3" && $MODE != "4" ]]; do
-    read -rp "$(echo -e "${BOLD}Choose [1/2/3/4]: ${NC}")" MODE || MODE=""
+    read -rp "${_PB}Choose [1/2/3/4]: ${_PN}" MODE || MODE=""
 done
 
 mkdir -p "$INSTALL_DIR"
@@ -318,7 +323,7 @@ if [[ $MODE == "4" ]]; then
         echo
         RC_ROLE=""
         while [[ $RC_ROLE != "1" && $RC_ROLE != "2" ]]; do
-            read -rp "$(echo -e "${BOLD}Which role to reconfigure [1/2]: ${NC}")" RC_ROLE || RC_ROLE=""
+            read -rp "${_PB}Which role to reconfigure [1/2]: ${_PN}" RC_ROLE || RC_ROLE=""
         done
         [[ $RC_ROLE == "1" ]] && RC="server" || RC="client"
     elif $HAS_SERVER; then
@@ -492,7 +497,7 @@ if [[ $ROLE == "server" ]]; then
     banner "Encryption key"
     echo "  Press Enter to generate a fresh key, or paste an existing one."
     echo
-    read -rp "$(echo -e "${BOLD}Paste existing key (or Enter to generate): ${NC}")" ENC_KEY || ENC_KEY=""
+    read -rp "${_PB}Paste existing key (or Enter to generate): ${_PN}" ENC_KEY || ENC_KEY=""
     if [[ -z $ENC_KEY ]]; then
         ENC_KEY=$(generate_key)
         echo
@@ -644,7 +649,7 @@ else
     echo
     ENC_KEY=""
     while [[ -z $ENC_KEY ]]; do
-        read -rp "$(echo -e "${BOLD}Encryption key: ${NC}")" ENC_KEY || ENC_KEY=""
+        read -rp "${_PB}Encryption key: ${_PN}" ENC_KEY || ENC_KEY=""
         [[ -z $ENC_KEY ]] && warn "Key is required."
     done
 
@@ -655,7 +660,7 @@ else
     echo
     RESOLVERS=()
     while true; do
-        read -rp "$(echo -e "${BOLD}  Resolver (blank to finish): ${NC}")" R || R=""
+        read -rp "${_PB}  Resolver (blank to finish): ${_PN}" R || R=""
         [[ -z $R ]] && break
         if [[ $R =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
             RESOLVERS+=("$R"); ok "  Added: $R"
@@ -687,7 +692,7 @@ else
             echo "  Enter each local SOCKS5 proxy (IP:PORT; blank to finish)."
             SOCKS5_LIST=()
             while true; do
-                read -rp "$(echo -e "${BOLD}  Proxy (blank to finish): ${NC}")" P || P=""
+                read -rp "${_PB}  Proxy (blank to finish): ${_PN}" P || P=""
                 [[ -z $P ]] && break
                 if [[ $P =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
                     SOCKS5_LIST+=("$P"); ok "  Added: $P"
