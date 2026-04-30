@@ -402,28 +402,6 @@ func (c *Client) StartAsyncRuntime(parentCtx context.Context) error {
 				go c.asyncVioTCPDownloadReaderWorker(runtimeCtx, recv)
 			}
 
-			// Hole-puncher: send periodic TCP packets FROM VIO_TCP_DOWNLOAD_PORT TO
-			// SERVER_IP:VIO_TCP_SERVER_PORT to establish ISP stateful firewall state so
-			// the server's unsolicited VioTCP responses are allowed back through.
-			if c.cfg.VioTCPClientIP != "" {
-				clientIP := net.ParseIP(c.cfg.VioTCPClientIP)
-				if clientIP != nil {
-					puncher, punchErr := viotcp.NewSender(clientIP, uint16(c.cfg.VioTCPDownloadPort))
-					if punchErr != nil {
-						c.log.Warnf("<yellow>VioTCP: cannot open hole-punch sender: %v</yellow>", punchErr)
-					} else {
-						c.log.Infof("\U0001F50D <cyan>VioTCP hole-puncher active (%s:%d → %s:%d every 20s)</cyan>",
-							c.cfg.VioTCPClientIP, c.cfg.VioTCPDownloadPort,
-							c.cfg.ServerIP, c.cfg.VioTCPServerPort)
-						go func() {
-							<-runtimeCtx.Done()
-							_ = puncher.Close()
-						}()
-						c.asyncWG.Add(1)
-						go c.asyncVioTCPHolePunchWorker(runtimeCtx, puncher, svrIP, uint16(c.cfg.VioTCPServerPort))
-					}
-				}
-			}
 		}
 	}
 
@@ -1002,29 +980,6 @@ func (c *Client) asyncUDPDownloadReaderWorker(ctx context.Context, conn *net.UDP
 				c.udpBufferPool.Put(buf)
 				c.onRXDrop(addr)
 			}
-		}
-	}
-}
-
-// asyncVioTCPHolePunchWorker sends periodic TCP packets FROM VIO_TCP_DOWNLOAD_PORT
-// TO the server's VioTCP port, creating ISP-level stateful firewall state so that
-// the server's unsolicited VioTCP responses are allowed back through.
-func (c *Client) asyncVioTCPHolePunchWorker(ctx context.Context, sender *viotcp.Sender, serverIP net.IP, serverPort uint16) {
-	defer c.asyncWG.Done()
-	ticker := time.NewTicker(20 * time.Second)
-	defer ticker.Stop()
-	punch := func() {
-		if err := sender.Send(serverIP, serverPort, []byte{0}); err != nil {
-			c.log.Debugf("<yellow>VioTCP hole-punch send error: %v</yellow>", err)
-		}
-	}
-	punch() // send immediately on start
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			punch()
 		}
 	}
 }

@@ -717,14 +717,15 @@ func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domain
 	}
 	record.streamCleanup = s.cleanupStreamArtifacts
 
-	// If the client supplied a download endpoint, wire up the channel.
-	// port=0 means UDP is disabled but the IP is still needed for VioTCP sends.
+	// If the client supplied a UDP download endpoint, wire up the channel.
 	if payloadLen >= VpnProto.SessionInitUDPSize {
 		ip := net.IP(vpnPacket.Payload[10:14])
 		port := int(binary.BigEndian.Uint16(vpnPacket.Payload[14:16]))
-		if ip4 := ip.To4(); ip4 != nil && !net.IP(ip4).IsUnspecified() {
-			record.ClientUDPAddr = &net.UDPAddr{IP: ip4, Port: port}
-			record.udpSendNotify = s.signalUDPSend
+		if port > 0 {
+			if ip4 := ip.To4(); ip4 != nil {
+				record.ClientUDPAddr = &net.UDPAddr{IP: ip4, Port: port}
+				record.udpSendNotify = s.signalUDPSend
+			}
 		}
 	}
 

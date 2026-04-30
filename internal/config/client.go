@@ -41,7 +41,6 @@ type ClientConfig struct {
 	UploadSocks5Proxies                   []string          `toml:"UPLOAD_SOCKS5_PROXIES"`
 	VioTCPDownloadPort                    int               `toml:"VIO_TCP_DOWNLOAD_PORT"`
 	VioTCPServerPort                      int               `toml:"VIO_TCP_SERVER_PORT"`
-	VioTCPClientIP                        string            `toml:"VIO_TCP_CLIENT_IP"`
 	SOCKS5Auth                            bool              `toml:"SOCKS5_AUTH"`
 	SOCKS5User                            string            `toml:"SOCKS5_USER"`
 	SOCKS5Pass                            string            `toml:"SOCKS5_PASS"`
@@ -392,16 +391,6 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 	}
 	if cfg.VioTCPDownloadPort > 0 && (cfg.VioTCPServerPort == 0 || cfg.ServerIP == "") {
 		return cfg, fmt.Errorf("VIO_TCP_DOWNLOAD_PORT requires SERVER_IP and VIO_TCP_SERVER_PORT to be set")
-	}
-
-	// VIO_TCP_CLIENT_IP is the client's own public IP for VioTCP-only mode.
-	// Falls back to UDP_DOWNLOAD_IP when not set so existing configs keep working.
-	cfg.VioTCPClientIP = strings.TrimSpace(cfg.VioTCPClientIP)
-	if cfg.VioTCPClientIP == "" && cfg.VioTCPDownloadPort > 0 {
-		cfg.VioTCPClientIP = cfg.UDPDownloadIP
-	}
-	if cfg.VioTCPClientIP != "" && net.ParseIP(cfg.VioTCPClientIP) == nil {
-		return cfg, fmt.Errorf("invalid VIO_TCP_CLIENT_IP: %q", cfg.VioTCPClientIP)
 	}
 
 	if len(cfg.SOCKS5User) > 255 {

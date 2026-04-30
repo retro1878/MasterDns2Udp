@@ -41,7 +41,7 @@ SERVER_IP = ""   # e.g. "203.0.113.10"
 #
 #  Mode B — Violated TCP  (when UDP is blocked)
 #    ► Set SERVER_IP above to the abroad server's public IP.
-#      Set VIO_TCP_CLIENT_IP to THIS machine's public IPv4.
+#      Set UDP_DOWNLOAD_IP to THIS machine's public IPv4.
 #      Set VIO_TCP_SERVER_PORT to match server's VIO_TCP_DOWNLOAD_PORT (e.g. 45000).
 #      Set VIO_TCP_DOWNLOAD_PORT to a port on THIS machine (e.g. 45001).
 #        • No service must listen on this port — the kernel RSTs the segment,
@@ -55,15 +55,11 @@ SERVER_IP = ""   # e.g. "203.0.113.10"
 #    ► Configure all fields for both Mode A and Mode B.
 #      ARQ deduplicates packets that arrive via both paths simultaneously.
 
-# Your public IPv4 that the abroad server can reach for UDP download.
-# Leave empty to disable UDP download.
+# Your public IPv4 that the abroad server can reach for UDP or VioTCP download.
+# Leave empty to disable UDP download (set it even in VioTCP mode so the server
+# knows your IP for the violated TCP return path).
 UDP_DOWNLOAD_IP   = ""   # e.g. "203.0.113.42"
 UDP_DOWNLOAD_PORT = 0
-
-# This machine's public IPv4 used as the VioTCP return address.
-# Required when VIO_TCP_DOWNLOAD_PORT is set and UDP_DOWNLOAD_IP is empty.
-# The server sends violated TCP packets to this IP; it is never used for UDP.
-VIO_TCP_CLIENT_IP = ""   # e.g. "203.0.113.42"
 
 # Violated TCP download: port on THIS machine the server sends to.
 # 0 = disabled. SERVER_IP and VIO_TCP_SERVER_PORT must be set if non-zero.
