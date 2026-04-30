@@ -22,9 +22,7 @@ import (
 	domainMatcher "masterdns2udp/internal/domainmatcher"
 	fragmentStore "masterdns2udp/internal/fragmentstore"
 	"masterdns2udp/internal/logger"
-	"masterdns2udp/internal/netutil"
 	"masterdns2udp/internal/security"
-	"masterdns2udp/internal/viotcp"
 	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
@@ -93,9 +91,6 @@ type Server struct {
 
 	// UDP upload channel (client→server, raw bypass for SOCKS5 paths)
 	udpUploadConn *net.UDPConn
-
-	// Violated TCP download channel (server→client, parallel to UDP for GFW evasion)
-	vioTCPSender *viotcp.Sender
 }
 
 type request struct {
@@ -338,7 +333,6 @@ func (s *Server) Run(ctx context.Context) error {
 	)
 
 	// Open the dedicated UDP download socket (server→client asymmetric channel).
-	// UDP_DOWNLOAD_PORT = 0 disables this channel; use VIO_TCP_DOWNLOAD_PORT instead.
 	if s.cfg.UDPDownloadPort > 0 {
 		dlAddr := &net.UDPAddr{IP: net.ParseIP(s.cfg.UDPHost), Port: s.cfg.UDPDownloadPort}
 		dlConn, dlErr := net.ListenUDP("udp", dlAddr)
@@ -375,42 +369,6 @@ func (s *Server) Run(ctx context.Context) error {
 			"\U0001F4E4 <green>UDP Upload Channel Ready on port <cyan>%d</cyan></green>",
 			s.cfg.UDPUploadPort,
 		)
-	}
-
-	// Open the violated TCP sender if configured.
-	if s.cfg.VioTCPDownloadPort > 0 {
-		srcIPStr := s.cfg.VioTCPSourceIP
-		var srcIP net.IP
-		if srcIPStr != "" {
-			srcIP = net.ParseIP(srcIPStr).To4()
-		}
-		if srcIP == nil {
-			for _, ip := range netutil.LocalInterfaceIPs() {
-				if parsed := net.ParseIP(ip).To4(); parsed != nil {
-					srcIP = parsed
-					break
-				}
-			}
-		}
-		if srcIP == nil {
-			s.log.Warnf("\U0001F6AB <yellow>VioTCP: cannot determine source IP — violated TCP download channel disabled</yellow>")
-		} else {
-			sender, sErr := viotcp.NewSender(srcIP, uint16(s.cfg.VioTCPDownloadPort))
-			if sErr != nil {
-				s.log.Warnf("\U0001F6AB <yellow>VioTCP: failed to open raw socket: %v — violated TCP download channel disabled</yellow>", sErr)
-			} else {
-				s.vioTCPSender = sender
-				defer func() {
-					_ = sender.Close()
-					s.vioTCPSender = nil
-				}()
-				s.log.Infof(
-					"\U0001F4E1 <green>VioTCP Download Channel Ready (src <cyan>%s:%d</cyan>)</green>",
-					srcIP,
-					s.cfg.VioTCPDownloadPort,
-				)
-			}
-		}
 	}
 
 	reqCh := make(chan request, s.cfg.EffectiveMaxConcurrentRequests())

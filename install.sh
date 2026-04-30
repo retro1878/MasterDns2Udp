@@ -511,24 +511,10 @@ if [[ $MODE == "4" ]]; then
 
     if [[ $RC == "server" ]]; then
         banner "Server download channel (current values shown as defaults)"
-        echo "  Set a port to 0 to disable that mode, non-zero to enable it."
-        echo "  Mode A only : UDP non-zero, VioTCP = 0"
-        echo "  Mode B only : UDP = 0,      VioTCP non-zero"
-        echo "  Mode C both : UDP non-zero, VioTCP non-zero  (ARQ deduplicates)"
         echo
         cur_udp=$(cfg_get "UDP_DOWNLOAD_PORT" "5555")
-        cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
-        cur_src=$(cfg_get "VIO_TCP_SOURCE_IP" "")
-        ask_optional UDP_DL_PORT "UDP download port     (Mode A, 0=off)" "$cur_udp"
-        ask_optional VIO_DL_PORT "VioTCP download port  (Mode B, 0=off)" "$cur_vio"
-        VIO_SRC_IP="$cur_src"
-        if [[ $VIO_DL_PORT != "0" ]]; then
-            ask_optional VIO_SRC_IP \
-                "Server public IPv4 for VioTCP packet headers (blank = auto-detect)" "$cur_src"
-        fi
-        cfg_set "UDP_DOWNLOAD_PORT"     "${UDP_DL_PORT}"
-        cfg_set "VIO_TCP_DOWNLOAD_PORT" "${VIO_DL_PORT}"
-        cfg_set "VIO_TCP_SOURCE_IP"     "\"${VIO_SRC_IP}\""
+        ask_optional UDP_DL_PORT "UDP download port (0=off)" "$cur_udp"
+        cfg_set "UDP_DOWNLOAD_PORT" "${UDP_DL_PORT}"
         ok "server.toml updated"
 
         banner "Firewall"
@@ -537,62 +523,31 @@ if [[ $MODE == "4" ]]; then
                 open_port "$UDP_DL_PORT" udp
             fi
         fi
-        [[ $VIO_DL_PORT != "0" ]] && info "VioTCP: server sends OUT — no inbound firewall rule needed."
 
         SVC="masterdns2udp-server"
 
     else  # client
         banner "Client download channel (current values shown as defaults)"
-        echo "  Standard mode: set UDP_DOWNLOAD_IP + port. VioTCP is optional/experimental."
         echo
         cur_srv=$(cfg_get "SERVER_IP" "")
         cur_udp_ip=$(cfg_get "UDP_DOWNLOAD_IP" "")
         cur_udp_port=$(cfg_get "UDP_DOWNLOAD_PORT" "0")
-        cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
-        cur_vio_srv=$(cfg_get "VIO_TCP_SERVER_PORT" "0")
 
-        ask_optional SERVER_IP "masterdns2udp-server IP (required for SOCKS5 upload; blank = UDP-only)" "$cur_srv"
-        echo
-        echo "  ── Raw UDP download (recommended) ───────────────────────────────────"
+        ask_optional SERVER_IP "masterdns2udp-server IP (required for SOCKS5 upload; blank = skip)" "$cur_srv"
         ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" "$cur_udp_ip"
         UDP_DL_PORT="0"
         if [[ -n $UDP_DL_IP ]]; then
             ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT, 0=off)" "$cur_udp_port"
         fi
-        echo
-        echo "  ── Violated TCP download (experimental, requires root/CAP_NET_RAW) ──"
-        VIO_DL_PORT="0"
-        VIO_SRV_PORT="0"
-        if [[ -z $SERVER_IP ]]; then
-            info "Skipping VioTCP — SERVER_IP not set."
-        else
-            echo "  Pick any closed port on THIS machine (nothing must listen on it)."
-            ask_optional VIO_DL_PORT \
-                "Closed port on this machine for VioTCP (0 = disable)" "$cur_vio"
-            if [[ $VIO_DL_PORT != "0" ]]; then
-                echo "  Enter the same value as VIO_TCP_DOWNLOAD_PORT on the server."
-                ask_optional VIO_SRV_PORT \
-                    "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "$cur_vio_srv"
-            fi
-        fi
-        cfg_set "SERVER_IP"             "\"${SERVER_IP}\""
-        cfg_set "UDP_DOWNLOAD_IP"       "\"${UDP_DL_IP}\""
-        cfg_set "UDP_DOWNLOAD_PORT"     "${UDP_DL_PORT}"
-        cfg_set "VIO_TCP_DOWNLOAD_PORT" "${VIO_DL_PORT}"
-        cfg_set "VIO_TCP_SERVER_PORT"   "${VIO_SRV_PORT}"
+        cfg_set "SERVER_IP"         "\"${SERVER_IP}\""
+        cfg_set "UDP_DOWNLOAD_IP"   "\"${UDP_DL_IP}\""
+        cfg_set "UDP_DOWNLOAD_PORT" "${UDP_DL_PORT}"
         ok "client.toml updated"
 
         banner "Firewall"
         if [[ -n $UDP_DL_IP && $UDP_DL_PORT != "0" ]]; then
             if ask_yn "  Open/confirm UDP port ${UDP_DL_PORT} in firewall?"; then
                 open_port "$UDP_DL_PORT" udp
-            fi
-        fi
-        if [[ $VIO_DL_PORT != "0" ]]; then
-            info "VioTCP: no service must listen on port ${VIO_DL_PORT}, but iptables must ACCEPT it"
-            info "  so the raw socket can see incoming packets before the kernel RSTs them."
-            if ask_yn "  Add iptables ACCEPT rule for TCP port ${VIO_DL_PORT}?" Y; then
-                open_port_iptables "$VIO_DL_PORT" tcp
             fi
         fi
 
@@ -639,19 +594,9 @@ if [[ $ROLE == "server" ]]; then
     ask_optional LOG_LEVEL   "Log level (DEBUG/INFO/WARN/ERROR)" "INFO"
 
     banner "Download channel"
-    echo "  Set a port to 0 to disable that mode, non-zero to enable it."
-    echo "  Mode A only : UDP non-zero, VioTCP = 0      (plain UDP to client's public IP)"
-    echo "  Mode B only : UDP = 0,      VioTCP non-zero  (violated TCP, requires root/CAP_NET_RAW)"
-    echo "  Mode C both : UDP non-zero, VioTCP non-zero  (parallel; ARQ deduplicates)"
-    echo "  VioTCP requires root/CAP_NET_RAW; no extra firewall rule needed."
+    echo "  The server sends encrypted packets to each client via raw UDP."
     echo
-    ask_optional UDP_DL_PORT  "UDP download port     (Mode A, 0=off)" "5555"
-    ask_optional VIO_DL_PORT  "VioTCP download port  (Mode B, 0=off)" "0"
-    VIO_SRC_IP=""
-    if [[ $VIO_DL_PORT != "0" ]]; then
-        ask_optional VIO_SRC_IP \
-            "Server public IPv4 for VioTCP packet headers (blank = auto-detect)" ""
-    fi
+    ask_optional UDP_DL_PORT "UDP download port (0=off)" "5555"
     ask_optional UL_PORT "SOCKS5 upload receive port (0=off)" "0"
 
     banner "Encryption key"
@@ -689,10 +634,8 @@ if [[ $ROLE == "server" ]]; then
 UDP_HOST = "0.0.0.0"
 UDP_PORT = ${DNS_PORT}
 
-# ── Download Channel  (Mode A=UDP, Mode B=VioTCP, Mode C=both; 0=disabled) ───
-UDP_DOWNLOAD_PORT     = ${UDP_DL_PORT}
-VIO_TCP_DOWNLOAD_PORT = ${VIO_DL_PORT}
-VIO_TCP_SOURCE_IP     = "${VIO_SRC_IP}"
+# ── Download Channel ──────────────────────────────────────────────────────────
+UDP_DOWNLOAD_PORT = ${UDP_DL_PORT}
 
 # ── SOCKS5 Upload Path (optional) ─────────────────────────────────────────────
 UDP_UPLOAD_PORT = ${UL_PORT}
@@ -746,9 +689,6 @@ CFGEOF
     if ask_yn "  Open UDP port(s) ${PORTS_STR} in firewall (ufw/firewalld)?"; then
         for p in "${PORTS_TO_OPEN[@]}"; do open_port "$p" udp; done
     fi
-    if [[ $VIO_DL_PORT != "0" ]]; then
-        info "VioTCP: server sends OUT on port ${VIO_DL_PORT} — no inbound firewall rule needed."
-    fi
 
     banner "Systemd service"
     write_systemd_service \
@@ -781,41 +721,17 @@ else
     ask_optional LOG_LEVEL    "Log level (DEBUG/INFO/WARN/ERROR)"       "INFO"
 
     banner "Tunnel server identity (abroad/free-internet machine)"
-    echo "  The abroad masterdns2udp-server's public IPv4 is required for:"
-    echo "    • Violated TCP download — raw socket filters inbound packets by source IP"
-    echo "    • SOCKS5 upload paths   — upload packets are addressed to this IP"
-    echo "  Leave blank if using Mode A (UDP download) only."
+    echo "  Required for SOCKS5 upload paths. Leave blank if not using SOCKS5 upload."
     echo
-    ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = UDP-only)" ""
+    ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = skip)" ""
 
     banner "Download channel"
-    echo "  Standard mode: set UDP_DOWNLOAD_IP + port. VioTCP is optional/experimental."
+    echo "  The server sends encrypted packets to this machine via raw UDP."
     echo
-
-    echo "  ── Raw UDP download (recommended) ───────────────────────────────────"
     ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" ""
     UDP_DL_PORT="0"
     if [[ -n $UDP_DL_IP ]]; then
         ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT, 0=off)" "5555"
-    fi
-
-    echo
-    echo "  ── Violated TCP download (experimental, requires root/CAP_NET_RAW) ──"
-    VIO_DL_PORT="0"
-    VIO_SRV_PORT="0"
-    if [[ -z $SERVER_IP ]]; then
-        info "Skipping VioTCP — SERVER_IP not set."
-    else
-        echo "  Choose any closed port on THIS machine (nothing must listen on it)."
-        echo "  iptables must ACCEPT it so the raw socket sees the packets; the kernel RSTs automatically."
-        ask_optional VIO_DL_PORT \
-            "Closed port on this machine for VioTCP (0 = disable)" "0"
-        if [[ $VIO_DL_PORT != "0" ]]; then
-            echo "  Enter the same value you set for VIO_TCP_DOWNLOAD_PORT on the server."
-            echo "  The client's raw socket uses it to recognise tunnel packets."
-            ask_optional VIO_SRV_PORT \
-                "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "0"
-        fi
     fi
 
     banner "Encryption key"
@@ -877,10 +793,8 @@ LISTEN_PORT   = ${LISTEN_PORT}
 SERVER_IP = "${SERVER_IP}"
 
 # ── Download Channel ──────────────────────────────────────────────────────────
-UDP_DOWNLOAD_IP       = "${UDP_DL_IP}"
-UDP_DOWNLOAD_PORT     = ${UDP_DL_PORT}
-VIO_TCP_DOWNLOAD_PORT = ${VIO_DL_PORT}
-VIO_TCP_SERVER_PORT   = ${VIO_SRV_PORT}
+UDP_DOWNLOAD_IP   = "${UDP_DL_IP}"
+UDP_DOWNLOAD_PORT = ${UDP_DL_PORT}
 
 # ── SOCKS5 Upload Paths (optional) ────────────────────────────────────────────
 UDP_UPLOAD_PORT       = ${UL_PORT}
@@ -934,13 +848,6 @@ CFGEOF
         fi
     else
         info "No UDP download port to open."
-    fi
-    if [[ $VIO_DL_PORT != "0" ]]; then
-        info "VioTCP: no service must listen on port ${VIO_DL_PORT}, but iptables must ACCEPT"
-        info "  inbound TCP so the raw socket can read packets before the kernel RSTs them."
-        if ask_yn "  Add iptables ACCEPT rule for TCP port ${VIO_DL_PORT}?" Y; then
-            open_port_iptables "$VIO_DL_PORT" tcp
-        fi
     fi
 
     banner "Systemd service"

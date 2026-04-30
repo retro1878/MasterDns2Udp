@@ -303,9 +303,7 @@ func (s *Server) runUDPSender(ctx context.Context) {
 
 func (s *Server) drainUDPSendQueues() {
 	conn := s.udpDownloadConn
-	// Allow VioTCP-only mode: proceed even when udpDownloadConn is nil, as long
-	// as a violated TCP sender is available to carry the traffic.
-	if conn == nil && s.vioTCPSender == nil {
+	if conn == nil {
 		return
 	}
 
@@ -333,7 +331,6 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 	mtu := record.DownloadMTUBytes
 	sessionID := record.ID
 	cookie := record.Cookie
-	vioPort := record.ClientVioTCPPort
 
 	// Drain orphan queue first (highest priority — RST/FIN control packets).
 	if record.OrphanQueue != nil {
@@ -349,7 +346,7 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 				StreamID:      pkt.StreamID,
 				SequenceNum:   pkt.SequenceNum,
 				Payload:       pkt.Payload,
-			}, mtu, vioPort)
+			}, mtu)
 		}
 	}
 
@@ -387,7 +384,7 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 				TotalFragments:  txPkt.TotalFragments,
 				CompressionType: txPkt.CompressionType,
 				Payload:         txPkt.Payload,
-			}, mtu, vioPort)
+			}, mtu)
 			putTXPacketToPool(txPkt)
 		}
 	}
@@ -395,10 +392,7 @@ func (s *Server) sendUDPPacketsForSession(conn *net.UDPConn, record *sessionReco
 }
 
 // sendRawVPNPacketUDP builds and sends a VPN packet over the UDP download channel.
-// If vioTCPDstPort > 0 and a violated TCP sender is configured, the same
-// encrypted payload is also sent over the violated TCP parallel channel so the
-// client's ARQ layer can deduplicate on whichever copy arrives first.
-func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts VpnProto.BuildOptions, mtu int, vioTCPDstPort uint16) {
+func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts VpnProto.BuildOptions, mtu int) {
 	raw, err := VpnProto.BuildRawAuto(opts, mtu)
 	if err != nil {
 		return
@@ -407,10 +401,5 @@ func (s *Server) sendRawVPNPacketUDP(conn *net.UDPConn, dst *net.UDPAddr, opts V
 	if err != nil {
 		return
 	}
-	if dst.Port > 0 {
-		_, _ = conn.WriteToUDP(encrypted, dst)
-	}
-	if s.vioTCPSender != nil && vioTCPDstPort > 0 {
-		_ = s.vioTCPSender.Send(dst.IP, vioTCPDstPort, encrypted)
-	}
+	_, _ = conn.WriteToUDP(encrypted, dst)
 }

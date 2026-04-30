@@ -25,7 +25,6 @@ import (
 	"masterdns2udp/internal/logger"
 	"masterdns2udp/internal/mlq"
 	"masterdns2udp/internal/security"
-	"masterdns2udp/internal/viotcp"
 	VpnProto "masterdns2udp/internal/vpnproto"
 )
 
@@ -140,10 +139,6 @@ type Client struct {
 	// Optional SOCKS5 upload pool: mirrors every outbound packet to all configured
 	// SOCKS5 proxies as a parallel upload path alongside the DNS channel.
 	socks5Upload *socks5UploaderPool
-
-	// Optional violated TCP download receiver: captures raw violated TCP packets
-	// from the abroad server as a parallel download path alongside UDP.
-	vioTCPReceiver *viotcp.Receiver
 }
 
 // clientStreamTXPacket represents a queued packet pending transmission or retransmission.

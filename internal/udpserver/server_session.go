@@ -684,7 +684,7 @@ func buildPreSessionPacketTypes() [256]bool {
 
 func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domainMatcher.Decision, vpnPacket VpnProto.Packet) []byte {
 	payloadLen := len(vpnPacket.Payload)
-	if vpnPacket.SessionID != 0 || (payloadLen != sessionInitDataSize && payloadLen != VpnProto.SessionInitUDPSize && payloadLen != VpnProto.SessionInitVioTCPSize) {
+	if vpnPacket.SessionID != 0 || (payloadLen != sessionInitDataSize && payloadLen != VpnProto.SessionInitUDPSize) {
 		return nil
 	}
 
@@ -726,14 +726,6 @@ func (s *Server) handleSessionInitRequest(questionPacket []byte, decision domain
 				record.ClientUDPAddr = &net.UDPAddr{IP: ip4, Port: port}
 				record.udpSendNotify = s.signalUDPSend
 			}
-		}
-	}
-
-	// If the client also supplied a violated TCP port, record it.
-	if payloadLen >= VpnProto.SessionInitVioTCPSize {
-		vioPort := binary.BigEndian.Uint16(vpnPacket.Payload[16:18])
-		if vioPort > 0 {
-			record.ClientVioTCPPort = vioPort
 		}
 	}
 

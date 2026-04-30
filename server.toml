@@ -25,41 +25,14 @@ UDP_PORT = 53
 
 # ── Download Channel ──────────────────────────────────────────────────────────
 #
-# The server needs a return path to each client. Two transport types are
-# available; enable one or both depending on what the network allows.
-#
-#  Mode A — Raw UDP  (default, lowest overhead)
-#    The server sends encrypted packets as plain UDP datagrams directly to
-#    each client's public IP. Fast and simple on networks that allow it.
+# The server sends encrypted packets as plain UDP datagrams to each client's
+# public IP. Set the port and open it in the firewall.
 #    ► Set UDP_DOWNLOAD_PORT to a non-zero port (e.g. 5555).
 #      Client must set UDP_DOWNLOAD_IP + UDP_DOWNLOAD_PORT to match.
 #      Open this port in your firewall (ufw allow 5555/udp).
-#
-#  Mode B — Violated TCP  (for networks that block raw UDP, e.g. some Irancell)
-#    The server crafts intentionally malformed TCP segments (PSH+ACK without
-#    handshake, static seq=1, TCP options in wrong position) that pass through
-#    fail-open DPI. Requires root / CAP_NET_RAW on this machine.
-#    ► Set VIO_TCP_DOWNLOAD_PORT to a non-zero port (e.g. 45000).
-#      Client must set VIO_TCP_SERVER_PORT = this value and SERVER_IP = this
-#      server's public IP. Set UDP_DOWNLOAD_PORT = 0 if UDP is blocked.
-#      No firewall rule needed (server sends OUT; it never listens on this port).
-#
-#  Mode C — Both  (redundancy / mixed networks)
-#    Both transports carry every packet; the client's ARQ layer deduplicates
-#    copies that arrive via both paths simultaneously.
-#    ► Set both ports to non-zero values.
 
-# Raw UDP download port. 0 = disabled.
+# UDP download port. 0 = disabled (not recommended).
 UDP_DOWNLOAD_PORT = 5555
-
-# Violated TCP download port (server's TCP source port). 0 = disabled.
-# Requires root / CAP_NET_RAW. Must match VIO_TCP_SERVER_PORT on the client.
-VIO_TCP_DOWNLOAD_PORT = 0
-
-# Public IPv4 of this server, written into violated TCP packet headers.
-# Leave empty to auto-detect from network interfaces (correct for single-IP VPS).
-# Set explicitly if the server has multiple IPs or auto-detect picks the wrong one.
-VIO_TCP_SOURCE_IP = ""
 
 # ── SOCKS5 Upload Path (optional) ─────────────────────────────────────────────
 #

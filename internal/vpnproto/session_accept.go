@@ -17,11 +17,8 @@ const (
 	// SessionInitBaseSize is the legacy 10-byte session-init payload.
 	// SessionInitUDPSize extends it by 6 bytes (4-byte IPv4 + 2-byte port)
 	// so the server knows where to send UDP download packets.
-	// SessionInitVioTCPSize further adds 2 bytes (uint16 big-endian) carrying
-	// the client's violated-TCP destination port for the parallel download channel.
-	SessionInitBaseSize    = 10
-	SessionInitUDPSize     = 16
-	SessionInitVioTCPSize  = 18
+	SessionInitBaseSize = 10
+	SessionInitUDPSize  = 16
 )
 
 // SessionAcceptPayload defines the full SESSION_ACCEPT payload:

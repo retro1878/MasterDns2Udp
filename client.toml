@@ -23,17 +23,13 @@ LISTEN_PORT   = 18000
 # ── Server Identity ───────────────────────────────────────────────────────────
 #
 # The abroad server's public IPv4.
-# Required when UPLOAD_SOCKS5_PROXIES is set; also used by the VioTCP raw-socket
-# filter if VIO_TCP_DOWNLOAD_PORT is enabled.
+# Required when UPLOAD_SOCKS5_PROXIES is set.
 
 SERVER_IP = ""   # e.g. "203.0.113.10"
 
 # ── Download Channel ──────────────────────────────────────────────────────────
 #
-# The server needs a return path to push traffic back to this client.
-# Standard mode is raw UDP — set UDP_DOWNLOAD_IP and UDP_DOWNLOAD_PORT.
-#
-#  Raw UDP (recommended)
+# The server pushes traffic back to this client via raw UDP.
 #    ► Set UDP_DOWNLOAD_IP to this machine's public IPv4.
 #      Set UDP_DOWNLOAD_PORT to match the server's UDP_DOWNLOAD_PORT (e.g. 5555).
 #      Open this port inbound in your firewall (ufw allow <port>/udp).
@@ -42,15 +38,6 @@ SERVER_IP = ""   # e.g. "203.0.113.10"
 # Leave empty to disable the UDP download channel.
 UDP_DOWNLOAD_IP   = ""   # e.g. "203.0.113.42"
 UDP_DOWNLOAD_PORT = 0
-
-# Violated TCP download (optional, experimental — requires root/CAP_NET_RAW).
-# Leave at 0 for standard UDP-only operation.
-# If non-zero: SERVER_IP and VIO_TCP_SERVER_PORT must also be set.
-VIO_TCP_DOWNLOAD_PORT = 0
-
-# The server's VioTCP source port (matches server's VIO_TCP_DOWNLOAD_PORT).
-# Used by the raw socket to filter inbound packets. 0 = disabled.
-VIO_TCP_SERVER_PORT = 0
 
 # ── SOCKS5 Upload Paths (optional) ────────────────────────────────────────────
 #
@@ -99,7 +86,7 @@ COMPRESSION_MIN_SIZE      = 120   # bytes — smaller payloads are not compresse
 # ── Packet Size (MTU negotiation) ─────────────────────────────────────────────
 #
 # Upload MTU: payload bytes per DNS query label group (38–150 is typical).
-# Download MTU: payload bytes per UDP/VioTCP packet (100–500).
+# Download MTU: payload bytes per UDP packet (100–500).
 # The tunnel negotiates the actual values within these min/max bounds.
 
 MIN_UPLOAD_MTU   = 38

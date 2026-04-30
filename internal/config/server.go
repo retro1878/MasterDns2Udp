@@ -10,7 +10,6 @@ package config
 import (
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -32,8 +31,6 @@ type ServerConfig struct {
 	UDPPort                           int      `toml:"UDP_PORT"`
 	UDPDownloadPort                   int      `toml:"UDP_DOWNLOAD_PORT"`
 	UDPUploadPort                     int      `toml:"UDP_UPLOAD_PORT"`
-	VioTCPDownloadPort                int      `toml:"VIO_TCP_DOWNLOAD_PORT"`
-	VioTCPSourceIP                    string   `toml:"VIO_TCP_SOURCE_IP"`
 	UDPReaders                        int      `toml:"UDP_READERS"`
 	SocketBufferSize                  int      `toml:"SOCKET_BUFFER_SIZE"`
 	MaxConcurrentRequests             int      `toml:"MAX_CONCURRENT_REQUESTS"`
@@ -294,10 +291,7 @@ func finalizeServerConfig(cfg ServerConfig) (ServerConfig, error) {
 		return cfg, fmt.Errorf("invalid UDP_PORT: %d", cfg.UDPPort)
 	}
 
-	// Apply default only when neither download channel is configured.
-	// If VIO_TCP_DOWNLOAD_PORT is set but UDP_DOWNLOAD_PORT is 0, that is an
-	// intentional VioTCP-only configuration and must not be overridden.
-	if cfg.UDPDownloadPort == 0 && cfg.VioTCPDownloadPort == 0 {
+	if cfg.UDPDownloadPort == 0 {
 		cfg.UDPDownloadPort = 5555
 	}
 	if cfg.UDPDownloadPort < 0 || cfg.UDPDownloadPort > 65535 {
@@ -308,13 +302,6 @@ func finalizeServerConfig(cfg ServerConfig) (ServerConfig, error) {
 		return cfg, fmt.Errorf("invalid UDP_UPLOAD_PORT: %d", cfg.UDPUploadPort)
 	}
 
-	if cfg.VioTCPDownloadPort < 0 || cfg.VioTCPDownloadPort > 65535 {
-		return cfg, fmt.Errorf("invalid VIO_TCP_DOWNLOAD_PORT: %d", cfg.VioTCPDownloadPort)
-	}
-	cfg.VioTCPSourceIP = strings.TrimSpace(cfg.VioTCPSourceIP)
-	if cfg.VioTCPSourceIP != "" && net.ParseIP(cfg.VioTCPSourceIP) == nil {
-		return cfg, fmt.Errorf("invalid VIO_TCP_SOURCE_IP: %q", cfg.VioTCPSourceIP)
-	}
 	if cfg.UDPReaders <= 0 {
 		cfg.UDPReaders = defaultServerConfig().UDPReaders
 	}
