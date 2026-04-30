@@ -543,31 +543,26 @@ if [[ $MODE == "4" ]]; then
 
     else  # client
         banner "Client download channel (current values shown as defaults)"
-        echo "  Set a field to 0/blank to disable that mode, non-zero/filled to enable it."
-        echo "  Mode A only : UDP IP + port set,  VioTCP port = 0"
-        echo "  Mode B only : UDP IP blank,        VioTCP port non-zero  (requires SERVER_IP)"
-        echo "  Mode C both : UDP IP + port set,  VioTCP port non-zero   (ARQ deduplicates)"
+        echo "  Standard mode: set UDP_DOWNLOAD_IP + port. VioTCP is optional/experimental."
         echo
         cur_srv=$(cfg_get "SERVER_IP" "")
         cur_udp_ip=$(cfg_get "UDP_DOWNLOAD_IP" "")
         cur_udp_port=$(cfg_get "UDP_DOWNLOAD_PORT" "0")
         cur_vio=$(cfg_get "VIO_TCP_DOWNLOAD_PORT" "0")
         cur_vio_srv=$(cfg_get "VIO_TCP_SERVER_PORT" "0")
-        cur_vio_cip=$(cfg_get "VIO_TCP_CLIENT_IP" "")
 
-        ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = UDP-only)" "$cur_srv"
+        ask_optional SERVER_IP "masterdns2udp-server IP (required for SOCKS5 upload; blank = UDP-only)" "$cur_srv"
         echo
-        echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
+        echo "  ── Raw UDP download (recommended) ───────────────────────────────────"
         ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" "$cur_udp_ip"
         UDP_DL_PORT="0"
         if [[ -n $UDP_DL_IP ]]; then
             ask_optional UDP_DL_PORT "UDP download port (must match server UDP_DOWNLOAD_PORT, 0=off)" "$cur_udp_port"
         fi
         echo
-        echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
+        echo "  ── Violated TCP download (experimental, requires root/CAP_NET_RAW) ──"
         VIO_DL_PORT="0"
         VIO_SRV_PORT="0"
-        VIO_CLIENT_IP=""
         if [[ -z $SERVER_IP ]]; then
             info "Skipping VioTCP — SERVER_IP not set."
         else
@@ -578,11 +573,6 @@ if [[ $MODE == "4" ]]; then
                 echo "  Enter the same value as VIO_TCP_DOWNLOAD_PORT on the server."
                 ask_optional VIO_SRV_PORT \
                     "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "$cur_vio_srv"
-                if [[ -z $UDP_DL_IP ]]; then
-                    echo "  The server sends VioTCP packets to this IP (needed when UDP is disabled)."
-                    ask_optional VIO_CLIENT_IP \
-                        "This machine's public IPv4 for VioTCP return path" "$cur_vio_cip"
-                fi
             fi
         fi
         cfg_set "SERVER_IP"             "\"${SERVER_IP}\""
@@ -590,7 +580,6 @@ if [[ $MODE == "4" ]]; then
         cfg_set "UDP_DOWNLOAD_PORT"     "${UDP_DL_PORT}"
         cfg_set "VIO_TCP_DOWNLOAD_PORT" "${VIO_DL_PORT}"
         cfg_set "VIO_TCP_SERVER_PORT"   "${VIO_SRV_PORT}"
-        cfg_set "VIO_TCP_CLIENT_IP"     "\"${VIO_CLIENT_IP}\""
         ok "client.toml updated"
 
         banner "Firewall"
@@ -652,7 +641,7 @@ if [[ $ROLE == "server" ]]; then
     banner "Download channel"
     echo "  Set a port to 0 to disable that mode, non-zero to enable it."
     echo "  Mode A only : UDP non-zero, VioTCP = 0      (plain UDP to client's public IP)"
-    echo "  Mode B only : UDP = 0,      VioTCP non-zero  (DPI-evading TCP, Irancell ranges)"
+    echo "  Mode B only : UDP = 0,      VioTCP non-zero  (violated TCP, requires root/CAP_NET_RAW)"
     echo "  Mode C both : UDP non-zero, VioTCP non-zero  (parallel; ARQ deduplicates)"
     echo "  VioTCP requires root/CAP_NET_RAW; no extra firewall rule needed."
     echo
@@ -800,13 +789,10 @@ else
     ask_optional SERVER_IP "masterdns2udp-server IP — the abroad/free-internet machine (blank = UDP-only)" ""
 
     banner "Download channel"
-    echo "  Set a field to 0/blank to disable that mode, non-zero/filled to enable it."
-    echo "  Mode A only : UDP IP + port set,  VioTCP port = 0"
-    echo "  Mode B only : UDP IP blank,        VioTCP port non-zero  (requires SERVER_IP)"
-    echo "  Mode C both : UDP IP + port set,  VioTCP port non-zero   (ARQ deduplicates)"
+    echo "  Standard mode: set UDP_DOWNLOAD_IP + port. VioTCP is optional/experimental."
     echo
 
-    echo "  ── Mode A: Raw UDP ──────────────────────────────────────────────────"
+    echo "  ── Raw UDP download (recommended) ───────────────────────────────────"
     ask_optional UDP_DL_IP "This machine's public IPv4 — where the server sends downloads (blank = disable)" ""
     UDP_DL_PORT="0"
     if [[ -n $UDP_DL_IP ]]; then
@@ -814,27 +800,21 @@ else
     fi
 
     echo
-    echo "  ── Mode B: Violated TCP ─────────────────────────────────────────────"
+    echo "  ── Violated TCP download (experimental, requires root/CAP_NET_RAW) ──"
     VIO_DL_PORT="0"
     VIO_SRV_PORT="0"
-    VIO_CLIENT_IP=""
     if [[ -z $SERVER_IP ]]; then
         info "Skipping VioTCP — SERVER_IP not set."
     else
         echo "  Choose any closed port on THIS machine (nothing must listen on it)."
         echo "  iptables must ACCEPT it so the raw socket sees the packets; the kernel RSTs automatically."
         ask_optional VIO_DL_PORT \
-            "Closed port on this machine for VioTCP (0 = disable Mode B)" "0"
+            "Closed port on this machine for VioTCP (0 = disable)" "0"
         if [[ $VIO_DL_PORT != "0" ]]; then
             echo "  Enter the same value you set for VIO_TCP_DOWNLOAD_PORT on the server."
             echo "  The client's raw socket uses it to recognise tunnel packets."
             ask_optional VIO_SRV_PORT \
                 "Server's VIO_TCP_DOWNLOAD_PORT (source port the server sends from)" "0"
-            if [[ -z $UDP_DL_IP ]]; then
-                echo "  The server sends VioTCP packets to this IP (needed when UDP is disabled)."
-                ask_optional VIO_CLIENT_IP \
-                    "This machine's public IPv4 for VioTCP return path" ""
-            fi
         fi
     fi
 
@@ -893,13 +873,12 @@ LISTEN_IP     = "127.0.0.1"
 LISTEN_PORT   = ${LISTEN_PORT}
 
 # ── Server Identity ───────────────────────────────────────────────────────────
-# The abroad server's public IPv4. Required for VioTCP download and SOCKS5 upload.
+# The abroad server's public IPv4. Required for SOCKS5 upload.
 SERVER_IP = "${SERVER_IP}"
 
-# ── Download Channel  (Mode A=UDP, Mode B=VioTCP, Mode C=both; 0=disabled) ───
+# ── Download Channel ──────────────────────────────────────────────────────────
 UDP_DOWNLOAD_IP       = "${UDP_DL_IP}"
 UDP_DOWNLOAD_PORT     = ${UDP_DL_PORT}
-VIO_TCP_CLIENT_IP     = "${VIO_CLIENT_IP}"
 VIO_TCP_DOWNLOAD_PORT = ${VIO_DL_PORT}
 VIO_TCP_SERVER_PORT   = ${VIO_SRV_PORT}
 
